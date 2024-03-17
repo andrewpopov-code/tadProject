@@ -1,6 +1,13 @@
 import torch
 
 import bisect
+from dataclasses import dataclass
+
+
+@dataclass
+class Simplex:
+    idx: int
+    diameter: float
 
 
 class BinomialCoeffTable:
@@ -53,10 +60,10 @@ class VietorisRipsComplex:
             idx -= self.binom(n, k)
         return reversed(simplex)
 
-    def get_cofacets(self, simplex: list):
+    def get_cofacets(self, simplex: list[int], r: int = 0):
         """simplex: i_k < i_{k + 1}"""
         cofacets = []
-        for k in range(self.n - 1, -1, -1):
+        for k in range(self.n - 1, r - 1, -1):
             kix = bisect.bisect_left(simplex, k)
             if kix != len(simplex) and simplex[kix] == k:
                 continue
@@ -65,12 +72,12 @@ class VietorisRipsComplex:
             for l in range(kix):
                 s += self.binom(simplex[l], l + 1)
             s += self.binom(k, kix + 1)
-            for l in range(kix + 1, len(simplex)):
+            for l in range(kix, len(simplex)):
                 s += self.binom(simplex[l], l + 2)
             cofacets.append(s)
         return cofacets
 
-    def get_facetes(self, simplex: list):
+    def get_facetes(self, simplex: list[int]):
         """simplex: i_k < i_{k + 1}"""
         facets = []
         s = 0
@@ -82,6 +89,24 @@ class VietorisRipsComplex:
             s += self.binom(simplex[k + 1], k + 1)
             facets.append(s)
         return facets
+
+    def assemble_columns_to_reduce(self, simplexes: list[Simplex], dim):
+        res = []
+        for s in simplexes:
+            res.extend(
+                self.get_cofacets(
+                    self.get_simplex_vertices(s.idx, dim, dim + 1),
+                    self.get_max_vertex(s.idx, dim, dim + 1)
+                )
+            )
+        return res
+
+    def get_zero_apparent_cofacet(self, simplex):
+        cofacets = self.get_cofacets(simplex)
+
+    def is_in_zero_apparent_pair(self, simplex):
+        c = self.get_zero_apparent_cofacet(simplex)
+        facets = self.get_facetes(simplex)
 
     @staticmethod
     def low(b: torch.Tensor, j: int):
