@@ -1,127 +1,17 @@
 import torch
 import torch.nn as nn
 from torch.nn.modules.transformer import _detect_is_causal_mask, _get_seq_len
-import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
+
 import torch_topological.nn as tnn
 from dadapy import data
-from gtda.diagrams import PairwiseDistance, BettiCurve
-from gtda.homology import VietorisRipsPersistence
-from gtda.images import ImageToPointCloud, RadialFiltration
-import matplotlib.pyplot as plt
+
 from typing import Optional
 
-
-def euclidean_dist(x: torch.Tensor, y: torch.Tensor):
-    return torch.cdist(x, y)
-
-
-def draw_heatmap(d: torch.Tensor, writer: SummaryWriter, tag: str, title: str):
-    fig, ax = plt.subplots()
-    ax.imshow(d)
-    for i in range(d.shape[0]):
-        for j in range(d.shape[1]):
-            ax.text(j, i, d[i, j], ha='center', va='center', color='w')
-    ax.set_title(title)
-    fig.tight_layout()
-
-    writer.add_figure(tag, fig)
-
-
-class AttentionWrapper(nn.Module):
-    def __init__(self, attn, homology_dim=1):
-        super().__init__()
-        self.attn_module = attn
-        self.VR = tnn.VietorisRipsComplex(dim=homology_dim)
-
-    def __call__(self, *args, **kwargs):
-        x, attn_weights = self.attn_module(*args, **kwargs)
-        print(attn_weights)  # Attention matrices
-        # TODO: compute distance matrix, curvature, magnitude
-        d = AttentionWrapper.distance(attn_weights)
-        pi = self.VR(d, treat_as_distances=True)
-        id_profile = data.Data(distances=d.numpy()).compute_id_2NN()
-
-        return x, attn_weights
-
-    @staticmethod
-    def distance(attn_weights: torch.Tensor):
-        d = torch.zeros_like(attn_weights)
-        d1 = torch.zeros_like(attn_weights)
-        for i in range(attn_weights.shape[0]):
-            for j in range(attn_weights.shape[1]):
-                d[i][j] = torch.abs(attn_weights[i] - attn_weights[j]).sum() / 2
-                d1[i][i] = torch.sqrt(torch.square(torch.sqrt(attn_weights[i]) - torch.sqrt(attn_weights[j])).sum() / 2)
-        return d
-
-
-class FFTLayerWrapper(nn.Module):
-    def __init__(self, fft_module):
-        super().__init__()
-        self.fft_module = fft_module
-
-    def __call__(self, x, *args, **kwargs):
-        print(x)  # Batch representation
-
-        return self.fft_module(x, *args, **kwargs)
-
-
-class Persistence(nn.Module):
-    def __init__(self, writer: SummaryWriter, homology_dim=1):
-        super().__init__()
-        self.writer = writer
-        self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
-        self.PD = PairwiseDistance(metric='wasserstein')
-        self.Betti = BettiCurve()
-        self.diagrams = []  # to compute the heatmap
-        self.step = 0
-
-    def __call__(self, d: torch.Tensor):
-        self.step += 1
-        pi = self.VR.fit_transform(d)
-        self.diagrams.append(pi)
-        bc = self.Betti.fit_transform(pi)
-
-        self.log(bc)
-
-    def heatmap(self):
-        d = torch.zeros((len(self.diagrams), len(self.diagrams)))
-        for i in range(len(self.diagrams)):
-            for j in range(i + 1, len(self.diagrams)):
-                d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
-        return d
-
-    def log(self, bc):
-        for i in range(bc.shape[0]):
-            self.writer.add_scalar(f'Layer {self.step} Betti Curve', bc[i], i)
-
-    def finalize(self):
-        draw_heatmap(self.heatmap(), self.writer, 'RTD', 'Pairwise RTD')
-
-
-class IntrinsicDimension(nn.Module):
-    def __init__(self, writer: SummaryWriter):
-        super().__init__()
-        self.writer = writer
-
-    def __call__(self, d: torch.Tensor):
-        dim = data.Data(distances=d.numpy()).compute_id_2NN()[0]
-        self.log(dim)
-
-    def log(self, dim):
-        self.writer.add_scalar('ID Profile', dim)
-
-
-class Mapper(nn.Module):
-    def __init__(self, writer: SummaryWriter):
-        super().__init__()
-        self.writer = writer
-
-    def __call__(self, *args, **kwargs):
-        ...
-
-    def log(self):
-        ...
+from utils import draw_heatmap
+from .homology import Persistence
+from .dimension import IntrinsicDimension
 
 
 class TransformerEncoderWrapper(nn.Module):
@@ -142,13 +32,13 @@ class TransformerEncoderWrapper(nn.Module):
         res = src
         x = self.encoder(src, mask, src_key_padding_mask, is_causal)
 
-        self.simulate_encoder(res, mask, src_key_padding_mask, is_causal)
+        self._simulate_encoder(res, mask, src_key_padding_mask, is_causal)
         self.Filtration.finalize()
 
         return x
 
-    def simulate_encoder(self, src: torch.Tensor, mask: Optional[torch.Tensor] = None,
-                         src_key_padding_mask: Optional[torch.Tensor] = None, is_causal: bool = False):
+    def _simulate_encoder(self, src: torch.Tensor, mask: Optional[torch.Tensor] = None,
+                          src_key_padding_mask: Optional[torch.Tensor] = None, is_causal: bool = False):
         src_key_padding_mask = F._canonical_mask(
             mask=src_key_padding_mask,
             mask_name="src_key_padding_mask",
@@ -227,7 +117,7 @@ class TransformerEncoderWrapper(nn.Module):
         is_causal = _detect_is_causal_mask(mask, is_causal, seq_len)
 
         for step, layer in enumerate(self.encoder.layers, 1):
-            output = self.simulate_layer(step, layer, output, mask, src_key_padding_mask_for_layers, is_causal)
+            output = self._simulate_layer(step, layer, output, mask, src_key_padding_mask_for_layers, is_causal)
 
         if convert_to_nested:
             output = output.to_padded_tensor(0., src.size())
@@ -237,10 +127,10 @@ class TransformerEncoderWrapper(nn.Module):
 
         return output
 
-    def simulate_layer(self, step: int, layer: nn.TransformerEncoderLayer, src: torch.Tensor,
-                       src_mask: Optional[torch.Tensor] = None,
-                       src_key_padding_mask: Optional[torch.Tensor] = None,
-                       is_causal: bool = False):
+    def _simulate_layer(self, step: int, layer: nn.TransformerEncoderLayer, src: torch.Tensor,
+                        src_mask: Optional[torch.Tensor] = None,
+                        src_key_padding_mask: Optional[torch.Tensor] = None,
+                        is_causal: bool = False):
 
         src_key_padding_mask = F._canonical_mask(
             mask=src_key_padding_mask,
@@ -362,3 +252,41 @@ class TransformerEncoderWrapper(nn.Module):
 
     def log(self, d: torch.Tensor, step: int):
         draw_heatmap(d, self.writer, 'Distance', f'Distance at Step {step}')
+
+
+class AttentionWrapper(nn.Module):
+    def __init__(self, attn, homology_dim=1):
+        super().__init__()
+        self.attn_module = attn
+        self.VR = tnn.VietorisRipsComplex(dim=homology_dim)
+
+    def __call__(self, *args, **kwargs):
+        x, attn_weights = self.attn_module(*args, **kwargs)
+        print(attn_weights)  # Attention matrices
+        # TODO: compute distance matrix, curvature, magnitude
+        d = AttentionWrapper.distance(attn_weights)
+        pi = self.VR(d, treat_as_distances=True)
+        id_profile = data.Data(distances=d.numpy()).compute_id_2NN()
+
+        return x, attn_weights
+
+    @staticmethod
+    def distance(attn_weights: torch.Tensor):
+        d = torch.zeros_like(attn_weights)
+        d1 = torch.zeros_like(attn_weights)
+        for i in range(attn_weights.shape[0]):
+            for j in range(attn_weights.shape[1]):
+                d[i][j] = torch.abs(attn_weights[i] - attn_weights[j]).sum() / 2
+                d1[i][i] = torch.sqrt(torch.square(torch.sqrt(attn_weights[i]) - torch.sqrt(attn_weights[j])).sum() / 2)
+        return d
+
+
+class FFTLayerWrapper(nn.Module):
+    def __init__(self, fft_module):
+        super().__init__()
+        self.fft_module = fft_module
+
+    def __call__(self, x, *args, **kwargs):
+        print(x)  # Batch representation
+
+        return self.fft_module(x, *args, **kwargs)
