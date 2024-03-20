@@ -8,22 +8,22 @@ from utils import draw_heatmap
 
 
 class Persistence(nn.Module):
-    def __init__(self, writer: SummaryWriter, homology_dim=1):
+    def __init__(self, writer: SummaryWriter,  num_layers: int, homology_dim=1, display_heatmap: int = 1):
         super().__init__()
         self.writer = writer
         self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
         self.PD = PairwiseDistance(metric='wasserstein')
         self.Betti = BettiCurve()
+        self.display_heatmap = display_heatmap
+        self.num_layers = num_layers
         self.diagrams = []  # to compute the heatmap
-        self.step = 0
 
-    def __call__(self, d: torch.Tensor):
-        self.step += 1
+    def __call__(self, d: torch.Tensor, global_step: int):
         pi = self.VR.fit_transform(d)
         self.diagrams.append(pi)
         bc = self.Betti.fit_transform(pi)
 
-        self.log(bc)
+        self.log(bc, global_step)
 
     def heatmap(self):
         d = torch.zeros((len(self.diagrams), len(self.diagrams)))
@@ -32,9 +32,11 @@ class Persistence(nn.Module):
                 d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
         return d
 
-    def log(self, bc):
+    def log(self, bc, global_step):
         for i in range(bc.shape[0]):
-            self.writer.add_scalar(f'Betti Curves/Layer {self.step} Betti Curve', bc[i], i)
+            self.writer.add_scalar(f'Betti Curves/Layer {global_step % self.num_layers} Betti Curve', bc[i])
 
-    def finalize(self):
-        draw_heatmap(self.heatmap(), self.writer, 'RTD', 'Pairwise RTD')
+    def finalize(self, encoder_step: int):
+        if encoder_step % self.display_heatmap == 0:
+            draw_heatmap(self.heatmap(), self.writer, 'RTD', 'Pairwise RTD')
+        self.diagrams = []
