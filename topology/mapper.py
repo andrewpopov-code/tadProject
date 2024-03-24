@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
+from .topologybase import TopologyBase
 
 
-class Mapper(nn.Module):
+class Mapper(TopologyBase):
     def __init__(self, writer: SummaryWriter):
         super().__init__()
         self.writer = writer
 
-    def __call__(self, *args, **kwargs):
+    def forward(self, *args, **kwargs):
         ...
 
     def log(self):
