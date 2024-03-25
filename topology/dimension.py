@@ -9,10 +9,10 @@ from .topologybase import TopologyBase
 
 class IntrinsicDimension(TopologyBase):
     def __init__(self, parent: [TopologyBase, None] = None):
-        super().__init__(parent)
+        super().__init__(parent=parent)
         self.tag = f'ID Profile {id(self)}'
 
-    def forward(self, x: torch.Tensor, *args, tag: str = '', distances: bool = True, **kwargs):
+    def forward(self, x: torch.Tensor, *args, label: str = '', distances: bool = True, **kwargs):
         x = x.numpy()
         if not distances:
             x = np.unique(x, axis=-2)
@@ -21,7 +21,7 @@ class IntrinsicDimension(TopologyBase):
             else:  # T x D
                 x = euclidean_dist(x, x)
         dim, err, _ = data.Data(distances=x).compute_id_2NN()
-        return tag, dim, err
+        return label, dim, err
 
     def log(self, tag: str, dim: int = None, err: float = None, *args, writer: SummaryWriter):
         if not self.logging:

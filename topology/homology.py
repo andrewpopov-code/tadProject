@@ -9,19 +9,22 @@ from .topologybase import TopologyBase
 
 class Persistence(TopologyBase):
     def __init__(self, homology_dim: int = 1, parent: [TopologyBase, None] = None):
-        super().__init__(parent)
+        super().__init__(parent=parent)
         self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
         self.PD = PairwiseDistance(metric='wasserstein')
         self.Betti = BettiCurve()
         self.diagrams = []  # to compute the heatmap
         self.tag = f'Persistence {id(self)}'
 
-    def forward(self, x: torch.Tensor, *args, tag: str = '', **kwargs):
+    def forward(self, x: torch.Tensor, *args, label: str = '', treat_as_distances: bool = True, **kwargs):
+        if not treat_as_distances:
+            ...
+
         pi = self.VR.fit_transform(x)
         self.diagrams.append(pi)
         bc = self.Betti.fit_transform(pi)
 
-        return tag, pi, bc
+        return label, pi, bc
 
     def heatmap(self):
         d = torch.zeros((len(self.diagrams), len(self.diagrams)))
