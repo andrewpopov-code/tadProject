@@ -9,12 +9,11 @@ from .topologybase import TopologyBase
 
 class Persistence(TopologyBase):
     def __init__(self, homology_dim: int = 1, parent: [TopologyBase, None] = None):
-        super().__init__(parent=parent)
+        super().__init__(tag=f'Persistence {id(self)}', parent=parent)
         self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
         self.PD = PairwiseDistance(metric='wasserstein')
         self.Betti = BettiCurve()
         self.diagrams = []  # to compute the heatmap
-        self.tag = f'Persistence {id(self)}'
 
     def forward(self, x: torch.Tensor, *args, label: str = '', treat_as_distances: bool = True, **kwargs):
         if not treat_as_distances:
@@ -34,17 +33,16 @@ class Persistence(TopologyBase):
         return d
 
     def log(self, tag: str, pi=None, bc=None, *args, writer: SummaryWriter):
-        if not self.logging:
-            return tag, pi, bc, *args
-
-        for j in range(bc.shape[2]):
-            writer.add_scalars(
-                tag + '/Betti Curves', {
-                    f'Dimension {i}': bc[0, i, j] for i in range(bc.shape[1])
-                }
-            )
+        if self.logging:
+            for j in range(bc.shape[2]):
+                writer.add_scalars(
+                    tag + '/Betti Curves', {
+                        f'Dimension {i}': bc[0, i, j] for i in range(bc.shape[1])
+                    }
+                )
 
         # TODO: add persistence diagrams
+        return tag, pi, bc
 
     def finalize(self, encoder_step: int):
         if self.display_heatmap is not None and encoder_step % self.display_heatmap == 0:

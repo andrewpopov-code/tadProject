@@ -24,9 +24,8 @@ class IntrinsicDimension(TopologyBase):
         return label, dim, err
 
     def log(self, tag: str, dim: int = None, err: float = None, *args, writer: SummaryWriter):
-        if not self.logging:
-            return tag, dim, err
+        if self.logging:
+            writer.add_scalar(tag + '/ID Estimate', dim)
+            writer.add_scalar(tag + '/ID Estimate Error', err)
 
-        writer.add_scalar(tag + '/ID Estimate', dim)
-        writer.add_scalar(tag + '/ID Estimate Error', err)
         return tag, dim, err

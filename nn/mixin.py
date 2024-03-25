@@ -4,15 +4,16 @@ from torch.utils.tensorboard import SummaryWriter
 
 from functools import partial
 
-from .network import TopologicalNetwork
-from topology import Persistence, IntrinsicDimension
+from .module import TopologyModule
+from topology import Persistence, IntrinsicDimension, Entropy
 
 
-class TopologyMixin(TopologicalNetwork):
+class TopologyMixin(TopologyModule):
     def __init__(self, writer: SummaryWriter = None):
         super().__init__(writer)
         self.Filtration = Persistence(parent=self)
         self.Dimension = IntrinsicDimension(parent=self)
+        self.Entropy = Entropy(parent=self)
 
 
 class AttentionMixin(TopologyMixin):
@@ -30,12 +31,14 @@ class AttentionMixin(TopologyMixin):
     def attn_pre_hook(self, *args, **kwargs):
         return args, kwargs | dict(need_weights=True, average_attn_weights=not self.display_heads)
 
-    def attn_hook(self, attn_output, attn_output_weights, *args, module: int):
-        m = self.metric(attn_output_weights)
-        self.Filtration(m, tag=f'Persistence Analysis of Attention at MultiheadAttn({module})')
-        self.Dimension(m, tag=f'Dimensional Analysis of Attention at MultiheadAttn({module})')
+    def attn_hook(self, attn_output, attn_output_weights, module: int):
+        self.Entropy(attn_output_weights, label='Entropy Analysis of Attention')
 
-        return attn_output, attn_output_weights, args
+        m = self.metric(attn_output_weights)
+        self.Filtration(m, label=f'Persistence Analysis of Attention at MultiheadAttn({module})')
+        self.Dimension(m, label=f'Dimensional Analysis of Attention')
+
+        return attn_output, attn_output_weights
 
     @staticmethod
     def metric(attn: torch.Tensor) -> torch.Tensor:

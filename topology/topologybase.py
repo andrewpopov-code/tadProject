@@ -20,6 +20,7 @@ class TopologyBase(nn.Module):
     def add_log_hook(self, writer: SummaryWriter = None):
         self.register_forward_hook(partial(self.log, writer=writer), prepend=True)
         self.register_forward_hook(self.tag_hook, prepend=True)
+        self.logging = writer is not None
 
     def log(self, tag: str, *args, writer: SummaryWriter):
         ...
@@ -58,5 +59,5 @@ class TopologyBase(nn.Module):
             self.layers[k].enable_logs()
         self.logging = True
 
-    def outer_hook(self, label: str, *args):
+    def outer_hook(self, tag: str, *args):
         return args

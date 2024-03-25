@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
-from topology.topologybase import TopologyBase
+from topology import TopologyBase
 
 
 class TopologyObserver(TopologyBase):
