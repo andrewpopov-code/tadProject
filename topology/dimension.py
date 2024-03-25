@@ -9,8 +9,7 @@ from .topologybase import TopologyBase
 
 class IntrinsicDimension(TopologyBase):
     def __init__(self, parent: [TopologyBase, None] = None):
-        super().__init__(parent=parent)
-        self.tag = f'ID Profile {id(self)}'
+        super().__init__(tag=f'ID Profile {id(self)}', parent=parent)
 
     def forward(self, x: torch.Tensor, *args, label: str = '', distances: bool = True, **kwargs):
         x = x.numpy()
@@ -23,8 +22,13 @@ class IntrinsicDimension(TopologyBase):
         dim, err, _ = data.Data(distances=x).compute_id_2NN()
         return label, dim, err
 
+    def get_tags(self):
+        if self.parent is not None:
+            return self.parent.get_tags() + [self.tag]
+        return [self.tag]
+
     def log(self, tag: str, dim: int = None, err: float = None, *args, writer: SummaryWriter):
-        if self.logging:
+        if self.logging and dim is not None and err is not None:
             writer.add_scalar(tag + '/ID Estimate', dim)
             writer.add_scalar(tag + '/ID Estimate Error', err)
 

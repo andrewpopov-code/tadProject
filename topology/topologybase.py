@@ -23,7 +23,7 @@ class TopologyBase(nn.Module):
         self.logging = writer is not None
 
     def log(self, tag: str, *args, writer: SummaryWriter):
-        ...
+        raise NotImplementedError
 
     def tag_hook(self, label: str, *args):
         return '/'.join(self.get_tags()) + ': ' + label, args
@@ -46,7 +46,7 @@ class TopologyBase(nn.Module):
             self.layers[k].flush()
 
     def forward(self, x: torch.Tensor, *args, label: str = '', **kwargs):
-        ...
+        raise NotImplementedError
 
     def suppress_logs(self):
         for k in self.layers:

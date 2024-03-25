@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
-from functools import partial
-
 from topology import TopologyBase
 
 
@@ -22,5 +20,6 @@ class TopologyModule(TopologyBase):  # Inherit to enable
     def register(self, m: nn.Module):
         if isinstance(m, TopologyBase):
             self.layers[id(m)] = m
-            m.parent = self
-            m.add_log_hook(self.writer)
+            if m.parent is None:
+                m.add_log_hook(getattr(m, 'writer') or self.writer)  # Added once
+            m.parent = self  # Set by the immediate parent: last forward call is performed closest to the module
