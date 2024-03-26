@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
 
-from functools import partial
+
+class ParentWrapper:
+    def __init__(self, parent: ['TopologyBase', None]):
+        self.obj = parent
 
 
 class TopologyBase(nn.Module):
@@ -10,14 +12,20 @@ class TopologyBase(nn.Module):
         super().__init__()
         self.step = 0
         self.tag = tag
-        self.parent = parent
+        self._parent = ParentWrapper(parent)
         self.layers: dict[int, 'TopologyBase'] = {id(x): x for x in layers}
 
         self.register_forward_hook(self.increment)
 
+    def parent(self):
+        return self._parent.obj
+
+    def set_parent(self, parent: ['TopologyBase', None]):
+        self._parent.obj = parent
+
     def add_log_hook(self):
-        self.register_forward_hook(self.log, prepend=True)
-        self.register_forward_hook(self.writer_hook, prepend=True)
+        self.register_forward_hook(self.log, prepend=True, with_kwargs=True)
+        self.register_forward_hook(self.writer_hook, prepend=True, with_kwargs=True)
         self.register_forward_hook(self.tag_hook, prepend=True, with_kwargs=True)
 
     @staticmethod
@@ -31,9 +39,9 @@ class TopologyBase(nn.Module):
         return result
 
     def get_writer(self):
-        if self.parent is not None:
-            return getattr(self, 'writer') or self.parent.get_writer()
-        return getattr(self, 'writer')
+        if self.parent() is not None:
+            return getattr(self, 'writer', None) or self.parent().get_writer()
+        return getattr(self, 'writer', None)
 
     @staticmethod
     def increment(self: 'TopologyBase', args: tuple, result):
@@ -43,8 +51,8 @@ class TopologyBase(nn.Module):
         return result
 
     def get_tags(self):
-        if self.parent is not None:
-            return self.parent.get_tags() + [self.tag + f' (Call {self.step})']
+        if self.parent() is not None:
+            return self.parent().get_tags() + [self.tag + f' (Call {self.step})']
         return [self.tag + f' (Call {self.step})']
 
     def flush(self):
@@ -52,5 +60,9 @@ class TopologyBase(nn.Module):
         for k in self.layers:
             self.layers[k].flush()
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, **kwargs):
-        raise NotImplementedError
+    @staticmethod
+    def log(self: nn.Module, args: tuple, kwargs: dict, result):
+        ...
+
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, **kwargs):
+        ...

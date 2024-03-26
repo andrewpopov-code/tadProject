@@ -1,6 +1,7 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
+from numpy import unique
 
 
 def euclidean_dist(x: torch.Tensor, y: torch.Tensor):
@@ -9,10 +10,22 @@ def euclidean_dist(x: torch.Tensor, y: torch.Tensor):
 
 def image_distance(x: torch.Tensor):
     """
-    :param x: H x W x C
-    :return:
+    :param x: (B) x H x W x C
+    :return: distances between pixels
     """
-    x = x.flatten(0, 1)
+    if x.ndim == 3:
+        x = x.flatten(0, 1)
+    else:
+        x = x.flatten(1, 2)
+
+    return euclidean_dist(x, x)
+
+
+def compute_unique_distances(x: torch.Tensor):
+    if x.ndim == 3:  # H x W x C
+        x = x.flatten(0, 1)
+    x = x.detach().numpy()
+    x = torch.tensor(unique(x, axis=-2))  # N x C
     return euclidean_dist(x, x)
 
 
@@ -25,11 +38,3 @@ def draw_heatmap(d: torch.Tensor, writer: SummaryWriter, tag: str, title: str):
     fig.tight_layout()
 
     writer.add_figure('/'.join((tag, title)), fig)
-
-
-def betti_curves_str(dim: int, outer_step: [int, str], inner_step: [int, str]):
-    return f'Betti Curves/Step {outer_step}/Layer {inner_step} Betti Curve/Dimension {dim}'
-
-
-def id_str(outer_step: [int, str], inner_step: [int, str]):
-    return f'ID Profile/Step {outer_step}/Layer {inner_step}'

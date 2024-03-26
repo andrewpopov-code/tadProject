@@ -1,9 +1,8 @@
 import torch
-from torch.utils.tensorboard import SummaryWriter
 from gtda.diagrams import PairwiseDistance, BettiCurve
 from gtda.homology import VietorisRipsPersistence
 
-from utils import draw_heatmap, betti_curves_str
+from utils import draw_heatmap, compute_unique_distances
 from .topologybase import TopologyBase
 
 
@@ -15,13 +14,17 @@ class Persistence(TopologyBase):
         self.Betti = BettiCurve()
         self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True):
-        if not distances:
-            ...
-
-        pi = self.VR.fit_transform(x)
-        self.diagrams.append(pi)
-        bc = self.Betti.fit_transform(pi)
+    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True, batches: bool = False):
+        if batches:
+            pi, bc = [], []
+            for b in range(x.shape[0]):
+                d = (compute_unique_distances(x[b]) if not distances else x[b]).unsqueeze(0)
+                pi.append(self.VR.fit_transform(d)[0])
+                bc.append(self.Betti.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
+        else:
+            d = (compute_unique_distances(x) if not distances else x).unsqueeze(0)
+            pi = self.VR.fit_transform(d)
+            bc = self.Betti.fit_transform(pi)
 
         return pi, bc
 
@@ -34,12 +37,17 @@ class Persistence(TopologyBase):
 
     @staticmethod
     def log(self: 'Persistence', args: tuple, kwargs: dict, result):
-        if kwargs['logging']:
-            for j in range(result[1].shape[2]):
+        pi, bc = result
+
+        if kwargs.get('batches', False):
+            pi, bc = pi[0], bc[0]
+
+        if kwargs.get('logging', True):
+            for j in range(bc.shape[1]):
                 kwargs['writer'].add_scalars(
                     kwargs['tag'] + '/Betti Curves', {
-                        f'Dimension {i}': result[1][0, i, j] for i in range(result[1].shape[1])
-                    }
+                        f'Dimension {i}': bc[i, j] for i in range(bc.shape[0])
+                    }, j
                 )
 
         # TODO: add persistence diagrams

@@ -19,21 +19,13 @@ class TopologyObserver(TopologyBase):
             net.apply(self.register)
 
         for m in topology_modules:
-            if m.parent is None and hasattr(m, 'log'):
+            if m.parent() is None and hasattr(m, 'log'):
                 m.add_log_hook()  # Added once (closest to the master object)
-            m.parent = self  # Set by the immediate parent: last forward call is performed closest to the module
-
-    @property
-    def parent(self):
-        return None
-
-    @parent.setter
-    def parent(self, value):
-        raise PermissionError("Observer objects can't have parents. Place it outside of other Topology modules.")
+            m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyBase):
             self.layers[id(m)] = m
-            if m.parent is None and hasattr(m, 'log'):
+            if m.parent() is None and hasattr(m, 'log'):
                 m.add_log_hook()  # Added once (closest to the master object)
-            m.parent = self  # Set by the immediate parent: last forward call is performed closest to the module
+            m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module

@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
@@ -19,8 +18,8 @@ class TopologyModule(TopologyBase):  # Inherit to enable
         return args
 
     def register(self, m: nn.Module):
-        if isinstance(m, TopologyBase):
+        if isinstance(m, TopologyBase) and m is not self:
             self.layers[id(m)] = m
-            if m.parent is None and hasattr(m, 'log'):
+            if m.parent() is None and hasattr(m, 'log'):
                 m.add_log_hook()  # Added once
-            m.parent = self  # Set by the immediate parent: last forward call is performed closest to the module
+            m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
