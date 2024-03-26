@@ -11,7 +11,7 @@ class DeltaHyperbolicity(TopologyBase):
     def __init__(self, parent: ['TopologyBase', None] = None):
         super().__init__(tag=f'Delta Hyperbolicity {id(self)}', parent=parent)
 
-    def forward(self, x: torch.Tensor, *args, label: str = '', distances: bool = True, **kwargs):
+    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True):
         x = x.numpy()
         if not distances:
             x = np.unique(x, axis=-2)
@@ -26,13 +26,14 @@ class DeltaHyperbolicity(TopologyBase):
         XY_p = 0.5 * (row + col - x)
         maxmin = np.max(np.minimum(XY_p[:, :, None], XY_p[None, :, :]), axis=1)
 
-        return label, np.max(maxmin - XY_p)
+        return np.max(maxmin - XY_p)
 
-    def log(self, tag: str, delta: float = None, *args, writer: SummaryWriter):
-        if self.logging and delta is not None:
-            writer.add_scalar(tag, delta)
+    @staticmethod
+    def log(self: 'DeltaHyperbolicity', args: tuple, kwargs: dict, result):
+        if kwargs['logging']:
+            kwargs['writer'].add_scalar(kwargs['tag'], result)
 
-        return tag, delta
+        return result
 
     def get_tags(self):
         if self.parent is not None:

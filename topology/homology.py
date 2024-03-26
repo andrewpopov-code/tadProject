@@ -15,15 +15,15 @@ class Persistence(TopologyBase):
         self.Betti = BettiCurve()
         self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *args, label: str = '', treat_as_distances: bool = True, **kwargs):
-        if not treat_as_distances:
+    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True):
+        if not distances:
             ...
 
         pi = self.VR.fit_transform(x)
         self.diagrams.append(pi)
         bc = self.Betti.fit_transform(pi)
 
-        return label, pi, bc
+        return pi, bc
 
     def heatmap(self):
         d = torch.zeros((len(self.diagrams), len(self.diagrams)))
@@ -32,17 +32,18 @@ class Persistence(TopologyBase):
                 d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
         return d
 
-    def log(self, tag: str, pi=None, bc=None, *args, writer: SummaryWriter):
-        if self.logging:
-            for j in range(bc.shape[2]):
-                writer.add_scalars(
-                    tag + '/Betti Curves', {
-                        f'Dimension {i}': bc[0, i, j] for i in range(bc.shape[1])
+    @staticmethod
+    def log(self: 'Persistence', args: tuple, kwargs: dict, result):
+        if kwargs['logging']:
+            for j in range(result[1].shape[2]):
+                kwargs['writer'].add_scalars(
+                    kwargs['tag'] + '/Betti Curves', {
+                        f'Dimension {i}': result[1][0, i, j] for i in range(result[1].shape[1])
                     }
                 )
 
         # TODO: add persistence diagrams
-        return tag, pi, bc
+        return result
 
     def finalize(self, encoder_step: int):
         if self.display_heatmap is not None and encoder_step % self.display_heatmap == 0:

@@ -7,19 +7,20 @@ from topology import TopologyBase
 
 class TopologyModule(TopologyBase):  # Inherit to enable
     def __init__(self,  writer: SummaryWriter = None):
-        super().__init__(tag=f'Topology Module {id(self)}', logging=writer is not None)
+        super().__init__(tag=f'Topology Module {id(self)}')
         self.writer = writer
-        self.post_init_handle = self.register_forward_pre_hook(self.post_init, with_kwargs=True)
+        self.post_init_handle = self.register_forward_pre_hook(self.post_init)
 
-    def post_init(self, *args, **kwargs):
+    @staticmethod
+    def post_init(self: 'TopologyModule', args: tuple):
         self.apply(self.register)
         self.post_init_handle.remove()
 
-        return args, kwargs
+        return args
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyBase):
             self.layers[id(m)] = m
-            if m.parent is None:
-                m.add_log_hook(getattr(m, 'writer') or self.writer)  # Added once
+            if m.parent is None and hasattr(m, 'log'):
+                m.add_log_hook()  # Added once
             m.parent = self  # Set by the immediate parent: last forward call is performed closest to the module

@@ -23,19 +23,22 @@ class AttentionMixin(TopologyMixin):
 
     def register(self, m: nn.Module, writer: SummaryWriter = None):
         if isinstance(m, nn.MultiheadAttention):
-            m.register_forward_pre_hook(self.attn_pre_hook, with_kwargs=True)
-            m.register_forward_hook(partial(self.attn_hook, module=id(m)))
+            m.register_forward_pre_hook(partial(self.attn_pre_hook, self=self), with_kwargs=True)
+            m.register_forward_hook(partial(self.attn_hook, self=self))
         else:
             super().register(m)
 
-    def attn_pre_hook(self, *args, **kwargs):
+    @staticmethod
+    def attn_pre_hook(self_attn: nn.MultiheadAttention, args: tuple, kwargs: dict, *, self: 'AttentionMixin'):
         return args, kwargs | dict(need_weights=True, average_attn_weights=not self.display_heads)
 
-    def attn_hook(self, attn_output, attn_output_weights, module: int):
+    @staticmethod
+    def attn_hook(self_attn: nn.MultiheadAttention, args: tuple, result, *, self: 'AttentionMixin'):
+        attn_output, attn_output_weights = result
         self.Entropy(attn_output_weights, label='Entropy Analysis of Attention')
 
         m = self.metric(attn_output_weights)
-        self.Filtration(m, label=f'Persistence Analysis of Attention at MultiheadAttn({module})')
+        self.Filtration(m, label=f'Persistence Analysis of Attention at MultiheadAttn({id(self_attn)})')
         self.Dimension(m, label=f'Dimensional Analysis of Attention')
 
         return attn_output, attn_output_weights
