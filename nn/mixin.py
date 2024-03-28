@@ -4,26 +4,49 @@ from torch.utils.tensorboard import SummaryWriter
 
 from functools import partial
 
-from .module import TopologyModule
-from topology import Persistence, IntrinsicDimension, Entropy, DeltaHyperbolicity
+from topology import TopologyBase, TopologyModule, Persistence, IntrinsicDimension, Entropy, DeltaHyperbolicity
 
 
-class TopologyMixin(TopologyModule):
-    def __init__(self, writer: SummaryWriter = None):
-        super().__init__(writer)
+class TopologyMixin(TopologyBase):
+    def __init__(self, tag: str = None, writer: SummaryWriter = None):
+        super().__init__(tag=tag or f'Topology Module: {id(self)}', parent=None, writer=writer)
         self.Filtration = Persistence()
         self.Dimension = IntrinsicDimension()
         self.Entropy = Entropy()
         self.DeltaHyperbolicity = DeltaHyperbolicity()
 
+        self.post_init_handle = self.register_forward_pre_hook(self.post_init)
+        self.register_forward_hook(self.increment)
+
+    @staticmethod
+    def post_init(self: nn.Module, args: tuple):
+        self.apply(self.register)
+        self.post_init_handle.remove()
+
+        return args
+
+    def register(self, m: nn.Module):
+        if isinstance(m, TopologyModule) and m is not self:
+            self.topology_modules[id(m)] = m
+            if m.parent() is None and hasattr(m, 'log'):
+                m.add_log_hook()  # Added once
+            m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
+
+    @staticmethod
+    def increment(self: 'TopologyMixin', args: tuple, result):
+        self.step += 1
+        for k in self.topology_modules:
+            self.topology_modules[k].flush()
+        return result
+
 
 class AttentionMixin(TopologyMixin):
-    def __init__(self, writer: SummaryWriter = None, display_heads: bool = True):
-        super().__init__(writer)
+    def __init__(self, tag: str = None, writer: SummaryWriter = None, display_heads: bool = True):
+        super().__init__(tag=tag, writer=writer)
         self.display_heads = display_heads
 
     def register(self, m: nn.Module):
-        if isinstance(m, nn.MultiheadAttention):
+        if isinstance(m, nn.MultiheadAttention):  # TODO: figure out other attention mechanisms
             m.register_forward_pre_hook(partial(self.attn_pre_hook, self=self), with_kwargs=True)
             m.register_forward_hook(partial(self.attn_hook, self=self))
         else:

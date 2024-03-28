@@ -1,15 +1,18 @@
 import torch
+import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 from dadapy import data
 
-from .topologybase import TopologyBase
+from .base import TopologyBase
+from .module import TopologyModule
 from utils import compute_unique_distances
 
 
-class IntrinsicDimension(TopologyBase):
-    def __init__(self, parent: [TopologyBase, None] = None):
-        super().__init__(tag=f'ID Profile {id(self)}', parent=parent)
+class IntrinsicDimension(TopologyModule):
+    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
+        super().__init__(tag=tag or f'ID Profile {id(self)}', parent=parent, writer=writer)
 
-    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True, batches: bool = False):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, distances: bool = True):
         if batches:
             dim, err = torch.zeros(x.shape[0]), torch.zeros(x.shape[0])
             for b in range(x.shape[0]):

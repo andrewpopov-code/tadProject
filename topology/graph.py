@@ -4,7 +4,7 @@ from GraphRicciCurvature.OllivierRicci import OllivierRicci
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from .topologybase import TopologyBase
+from .base import TopologyBase
 
 
 class Curvature(TopologyBase):

@@ -1,11 +1,14 @@
 import torch
+import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 
-from .topologybase import TopologyBase
+from .base import TopologyBase
+from .module import TopologyModule
 
 
-class Entropy(TopologyBase):
-    def __init__(self, parent: [TopologyBase, None] = None, base: str = 'nat'):
-        super().__init__(tag=f'Entropy Profile {id(self)}', parent=parent)
+class Entropy(TopologyModule):
+    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None, base: str = 'nat'):
+        super().__init__(tag=tag or f'Entropy Profile {id(self)}', parent=parent, writer=writer)
         self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
 
     def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False):

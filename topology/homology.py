@@ -1,20 +1,23 @@
 import torch
+import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 from gtda.diagrams import PairwiseDistance, BettiCurve
 from gtda.homology import VietorisRipsPersistence
 
 from utils import draw_heatmap, compute_unique_distances
-from .topologybase import TopologyBase
+from .base import TopologyBase
+from .module import TopologyModule
 
 
-class Persistence(TopologyBase):
-    def __init__(self, homology_dim: int = 1, parent: [TopologyBase, None] = None):
-        super().__init__(tag=f'Persistence {id(self)}', parent=parent)
+class Persistence(TopologyModule):
+    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None, homology_dim: int = 1):
+        super().__init__(tag=tag or f'Persistence Profile {id(self)}', parent=parent, writer=writer)
         self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
         self.PD = PairwiseDistance(metric='wasserstein')
         self.Betti = BettiCurve()
-        self.diagrams = []  # to compute the heatmap
+        # self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *, label: str = '', distances: bool = True, logging: bool = True, batches: bool = False):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, distances: bool = True):
         if batches:
             pi, bc = [], []
             for b in range(x.shape[0]):
@@ -28,12 +31,12 @@ class Persistence(TopologyBase):
 
         return pi, bc
 
-    def heatmap(self):
-        d = torch.zeros((len(self.diagrams), len(self.diagrams)))
-        for i in range(len(self.diagrams)):
-            for j in range(i + 1, len(self.diagrams)):
-                d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
-        return d
+    # def heatmap(self):
+    #     d = torch.zeros((len(self.diagrams), len(self.diagrams)))
+    #     for i in range(len(self.diagrams)):
+    #         for j in range(i + 1, len(self.diagrams)):
+    #             d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
+    #     return d
 
     @staticmethod
     def log(self: 'Persistence', args: tuple, kwargs: dict, result):
@@ -53,7 +56,7 @@ class Persistence(TopologyBase):
         # TODO: add persistence diagrams
         return result
 
-    def finalize(self, encoder_step: int):
-        if self.display_heatmap is not None and encoder_step % self.display_heatmap == 0:
-            draw_heatmap(self.heatmap(), self.writer, 'RTD', 'Pairwise RTD')
-        self.diagrams = []
+    # def finalize(self, encoder_step: int):
+    #     if self.display_heatmap is not None and encoder_step % self.display_heatmap == 0:
+    #         draw_heatmap(self.heatmap(), self.writer, 'RTD', 'Pairwise RTD')
+    #     self.diagrams = []
