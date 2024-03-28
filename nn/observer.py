@@ -14,6 +14,8 @@ class TopologyObserver(TopologyBase):
             layers=topology_modules
         )
         net.register_forward_hook(self.increment)
+        for m in topology_modules:
+            self.register(m)
         net.apply(self.register)
 
     def register(self, m: nn.Module):
