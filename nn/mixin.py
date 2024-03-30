@@ -15,7 +15,7 @@ class TopologyMixin(TopologyBase):
         self.Entropy = Entropy()
         self.DeltaHyperbolicity = DeltaHyperbolicity()
 
-        self.post_init_handle = self.register_forward_pre_hook(self.post_init)
+        self.apply(self.register)
         self.register_forward_hook(self.increment)
 
     @staticmethod
@@ -28,8 +28,7 @@ class TopologyMixin(TopologyBase):
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
             self.topology_modules[id(m)] = m
-            if m.parent() is None:
-                m.add_log_hook()  # Added once
+            m.add_log_hook()  # Added once
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     @staticmethod
