@@ -162,6 +162,7 @@ cython_debug/
 data/
 runs/
 distance/
+assets/
 *.ipynb
 *.png
 .DS_STORE

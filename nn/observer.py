@@ -7,6 +7,33 @@ from typing import Callable, Union
 from topology import TopologyBase, TopologyModule
 
 
+class _Hook:
+    def __init__(self, f: tuple[Callable], tm: TopologyModule, kwargs: dict):
+        self.f = f
+        self.tm = tm
+        self.kwargs = kwargs
+
+    def __call__(self, s, args, result):
+        if self.f:
+            self.tm(self.f[0](result), **self.kwargs)
+        else:
+            self.tm(result, **self.kwargs)
+        return result
+
+
+class _PreHook:
+    def __init__(self, f: tuple[Callable], tm: TopologyModule, kwargs: dict):
+        self.f = f
+        self.tm = tm
+        self.kwargs = kwargs
+
+    def __call__(self, s, args, kwargs):
+        if self.f:
+            self.tm(self.f[0](*args, **kwargs), **self.kwargs)
+        else:
+            self.tm(args[0], **self.kwargs)
+
+
 class TopologyObserver(TopologyBase):
     # Hooks to a network and fires when it is called | Hooks to modules assuming they're in the same network
     def __init__(
@@ -29,26 +56,11 @@ class TopologyObserver(TopologyBase):
 
         for m, tms in post_topology:
             for tm, kwargs, *f in tms:
-                if f:
-                    m.register_forward_hook(
-                        lambda s, args, result: TopologyObserver._second_arg(tm(f[0](result), **kwargs), result)
-                    )
-                else:
-                    m.register_forward_hook(
-                        lambda s, args, result: TopologyObserver._second_arg(tm(result, **kwargs), result)
-                    )
+                m.register_forward_hook(_Hook(f, tm, kwargs))
                 self.register(tm)
         for m, tms in pre_topology:
             for tm, kwargs, *f in tms:
-                if f:
-                    m.register_forward_pre_hook(
-                        lambda s, args, kw: TopologyObserver._second_arg(tm(f[0](*args, **kw), **kwargs), args),
-                        with_kwargs=True
-                    )
-                else:
-                    m.register_forward_pre_hook(
-                        lambda s, args: TopologyObserver._second_arg(tm(args[0], **kwargs), args)
-                    )
+                m.register_forward_pre_hook(_PreHook(f, tm, kwargs), with_kwargs=True)
                 self.register(tm)
 
         net.register_forward_hook(self.increment)
@@ -68,10 +80,6 @@ class TopologyObserver(TopologyBase):
         for k in self.topology_modules:
             self.topology_modules[k].flush()
         return result
-
-    @staticmethod
-    def _second_arg(x, y):
-        return y
 
 
 class TopologyTrainingObserver(TopologyObserver):
