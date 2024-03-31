@@ -33,8 +33,7 @@ class IntrinsicDimension(TopologyModule):
             return self.parent().get_tags() + [self.tag]
         return [self.tag]
 
-    @staticmethod
-    def log(self: 'IntrinsicDimension', args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result):
         dim, err = result
         if kwargs.get('batches', False):
             dim, err = dim[0], err[0]

@@ -21,8 +21,7 @@ class Entropy(TopologyModule):
             return self.parent().get_tags() + [self.tag]
         return [self.tag]
 
-    @staticmethod
-    def log(self: 'Entropy', args: tuple, kwargs: dict, entropy: torch.Tensor):
+    def log(self, args: tuple, kwargs: dict, entropy: torch.Tensor):
         _entropy = entropy[0] if kwargs.get('batches', False) else entropy
 
         if _entropy.ndim == 3:  # Multiple 'heads'

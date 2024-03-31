@@ -49,11 +49,10 @@ class TopologyModule(nn.Module, TopologyBase):
     @staticmethod
     def _log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
         if kwargs.get('logging', True):
-            return self.log(self, args, kwargs, result)
+            return self.log(args, kwargs, result)
         return result
 
-    @staticmethod
-    def log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result):
         ...
 
     def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):

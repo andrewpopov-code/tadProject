@@ -42,8 +42,7 @@ class Persistence(TopologyModule):
     #             d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
     #     return d
 
-    @staticmethod
-    def log(self: 'Persistence', args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result):
         pi, bc = result
 
         if kwargs.get('batches', False):
