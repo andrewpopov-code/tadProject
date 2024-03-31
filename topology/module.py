@@ -21,38 +21,23 @@ class TopologyModule(nn.Module, TopologyBase):
         return args
 
     def add_or_skip_log_hook(self):
-        if self.added_log_hook:
-            return
-
-        self.register_forward_hook(self._log, prepend=True, with_kwargs=True)
-        self.register_forward_hook(self.writer_hook, prepend=True, with_kwargs=True)
-        self.register_forward_hook(self.tag_hook, prepend=True, with_kwargs=True)
-
-        self.added_log_hook = True
-
-    @staticmethod
-    def tag_hook(self: 'TopologyModule', args: tuple, kwargs: dict, result):
-        kwargs['tag'] = '/'.join(self.get_tags())
-        return result
-
-    @staticmethod
-    def writer_hook(self: 'TopologyModule', args: tuple, kwargs: dict, result):
-        kwargs['writer'] = self.get_writer()
-        return result
+        if not self.added_log_hook:
+            self.register_forward_hook(self._log, with_kwargs=True)
+            self.added_log_hook = True
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
-            self.topology_modules[id(m)] = m
+            self.topology_children[id(m)] = m
             m.add_or_skip_log_hook()  # Added once
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     @staticmethod
     def _log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
         if kwargs.get('logging', True):
-            return self.log(args, kwargs, result)
+            return self.log(args, kwargs, result, '/'.join(self.get_tags()), self.get_writer())
         return result
 
-    def log(self, args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         ...
 
     def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):
@@ -61,6 +46,6 @@ class TopologyModule(nn.Module, TopologyBase):
     @staticmethod
     def increment(self: 'TopologyModule', args: tuple, result):
         self.step += 1
-        for k in self.topology_modules:
-            self.topology_modules[k].flush()
+        for k in self.topology_children:
+            self.topology_children[k].flush()
         return result

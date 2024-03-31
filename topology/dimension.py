@@ -33,12 +33,12 @@ class IntrinsicDimension(TopologyModule):
             return self.parent().get_tags() + [self.tag]
         return [self.tag]
 
-    def log(self, args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         dim, err = result
         if kwargs.get('batches', False):
             dim, err = dim[0], err[0]
 
-        kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', kwargs['tag'])), dim, self.step)
-        kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', kwargs['tag'])), err, self.step)
+        writer.add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', tag)), dim, self.step)
+        writer.add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', tag)), err, self.step)
 
         return result

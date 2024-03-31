@@ -70,22 +70,22 @@ class TopologyObserver(TopologyBase):
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self.net:
-            self.topology_modules[id(m)] = m
+            self.topology_children[id(m)] = m
             m.add_or_skip_log_hook()
             if m.parent() is None or self.reset:
                 m.set_parent(self)  # Set to be the observer
 
     def increment(self, m: nn.Module, args: tuple, result):
         self.step += 1
-        for k in self.topology_modules:
-            self.topology_modules[k].flush()
+        for k in self.topology_children:
+            self.topology_children[k].flush()
         return result
 
 
 class TopologyTrainingObserver(TopologyObserver):
     def __init__(
             self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
-            writer: SummaryWriter = None, reset: bool = True,
+            writer: SummaryWriter = None,
             pre_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
@@ -94,19 +94,19 @@ class TopologyTrainingObserver(TopologyObserver):
             ]] = (),
             log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False
     ):
-        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=reset, pre_topology=pre_topology, post_topology=post_topology)
+        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=True, pre_topology=pre_topology, post_topology=post_topology)
 
         self.log_every_train = log_every_train
         self.topology_every = topology_every
         self.log_every_val = log_every_val
         self.val_step = 0
 
-        for k in self.topology_modules:
-            if isinstance(self.topology_modules[k], TopologyModule):
-                self.topology_modules[k].forward = self.get_forward(self.topology_modules[k], self.topology_modules[k].forward)
+        for k in self.topology_children:
+            if isinstance(self.topology_children[k], TopologyModule):
+                self.topology_children[k].forward = self.get_forward(self.topology_children[k], self.topology_children[k].forward)
 
     def register(self, m: nn.Module):
-        if isinstance(m, TopologyModule) and id(m) not in self.topology_modules:
+        if isinstance(m, TopologyModule):
             m.register_forward_pre_hook(self.set_logging, with_kwargs=True)
         super().register(m)
 
@@ -116,21 +116,18 @@ class TopologyTrainingObserver(TopologyObserver):
             self.val_step = 0
         else:
             self.val_step += 1
-        for k in self.topology_modules:
-            self.topology_modules[k].flush()
+        for k in self.topology_children:
+            self.topology_children[k].flush()
         return result
 
     def set_logging(self, m: TopologyModule, args: tuple, kwargs: dict):
-        if kwargs.get('logging', True):  # Maybe set to False in the forward(...) call
+        if kwargs.get('logging', True) and m.parent() is self:  # May be set to False in the forward(...) call
             kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
         return args, kwargs
 
     def get_forward(self, m: TopologyModule, f: Callable):
         def forward(x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):
-            if self.topology_every or (
-                    self.step % self.log_every_train == 0 if m.training
-                    else self.val_step % self.log_every_val == 0
-            ):
+            if self.topology_every or logging:
                 return f(x, label=label, logging=logging, batches=batches, channel_first=channel_first, **kwargs)
             else:
                 return None

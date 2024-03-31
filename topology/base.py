@@ -12,7 +12,7 @@ class TopologyBase:
         self.tag = tag
         self.writer = writer
         self._parent = ParentContainer(parent)
-        self.topology_modules: dict[int, 'TopologyBase'] = {id(x): x for x in layers}
+        self.topology_children: dict[int, 'TopologyBase'] = {id(x): x for x in layers}
 
     def parent(self):
         return self._parent.obj
@@ -32,5 +32,5 @@ class TopologyBase:
 
     def flush(self):
         self.step = 0
-        for k in self.topology_modules:
-            self.topology_modules[k].flush()
+        for k in self.topology_children:
+            self.topology_children[k].flush()

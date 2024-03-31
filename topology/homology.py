@@ -42,15 +42,15 @@ class Persistence(TopologyModule):
     #             d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
     #     return d
 
-    def log(self, args: tuple, kwargs: dict, result):
+    def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         pi, bc = result
 
         if kwargs.get('batches', False):
             pi, bc = pi[0], bc[0]
 
         for j in range(bc.shape[1]):
-            kwargs['writer'].add_scalars(
-                '/'.join((kwargs['label'] + ' (Betti Curves)', kwargs['tag'])), {
+            writer.add_scalars(
+                '/'.join((kwargs['label'] + ' (Betti Curves)', tag)), {
                     f'Dimension {i}': bc[i, j] for i in range(bc.shape[0])
                 }, j
             )

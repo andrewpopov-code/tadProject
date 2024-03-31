@@ -18,24 +18,17 @@ class TopologyMixin(TopologyBase):
         self.apply(self.register)
         self.register_forward_hook(self.increment)
 
-    @staticmethod
-    def post_init(self: nn.Module, args: tuple):
-        self.apply(self.register)
-        self.post_init_handle.remove()
-
-        return args
-
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
-            self.topology_modules[id(m)] = m
-            m.add_or_skip_log_hook()  # Added once
+            self.topology_children[id(m)] = m
+            m.add_or_skip_log_hook()
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     @staticmethod
     def increment(self: 'TopologyMixin', args: tuple, result):
         self.step += 1
-        for k in self.topology_modules:
-            self.topology_modules[k].flush()
+        for k in self.topology_children:
+            self.topology_children[k].flush()
         return result
 
 

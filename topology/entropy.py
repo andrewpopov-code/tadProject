@@ -21,19 +21,19 @@ class Entropy(TopologyModule):
             return self.parent().get_tags() + [self.tag]
         return [self.tag]
 
-    def log(self, args: tuple, kwargs: dict, entropy: torch.Tensor):
+    def log(self, args: tuple, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
         _entropy = entropy[0] if kwargs.get('batches', False) else entropy
 
         if _entropy.ndim == 3:  # Multiple 'heads'
             _entropy = _entropy.mean(dim=-1)
-            kwargs['writer'].add_scalars(
-                '/'.join((kwargs['label'], kwargs['tag'])), {
+            writer.add_scalars(
+                '/'.join((kwargs['label'], tag)), {
                     f'Head {h}': _entropy[h] for h in range(entropy.shape[0])
                 }, self.step
             )
         _entropy = _entropy.mean(dim=-1)
-        kwargs['writer'].add_scalars(
-            '/'.join((kwargs['label'], kwargs['tag'])), {f'Average Entropy': _entropy[0]}, self.step
+        writer.add_scalars(
+            '/'.join((kwargs['label'], tag)), {f'Average Entropy': _entropy[0]}, self.step
         )
 
         return entropy

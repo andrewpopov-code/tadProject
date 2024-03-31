@@ -36,10 +36,10 @@ class DeltaHyperbolicity(TopologyModule):
 
         return y if batches else y[0]
 
-    def log(self, args: tuple, kwargs: dict, delta):
+    def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
         if kwargs.get('batches', False):
             delta = delta[0]
-        kwargs['writer'].add_scalar('/'.join((kwargs['label'], kwargs['tag'])), delta, self.step)
+        writer.add_scalar('/'.join((kwargs['label'], tag)), delta, self.step)
 
         return delta
 
