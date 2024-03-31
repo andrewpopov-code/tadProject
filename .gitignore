@@ -164,3 +164,4 @@ runs/
 distance/
 *.ipynb
 *.png
+.DS_STORE

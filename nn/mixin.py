@@ -28,7 +28,7 @@ class TopologyMixin(TopologyBase):
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
             self.topology_modules[id(m)] = m
-            m.add_log_hook()  # Added once
+            m.add_or_skip_log_hook()  # Added once
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     @staticmethod

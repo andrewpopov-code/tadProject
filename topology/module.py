@@ -20,7 +20,7 @@ class TopologyModule(nn.Module, TopologyBase):
 
         return args
 
-    def add_log_hook(self):
+    def add_or_skip_log_hook(self):
         if self.added_log_hook:
             return
 
@@ -31,7 +31,7 @@ class TopologyModule(nn.Module, TopologyBase):
 
     @staticmethod
     def tag_hook(self: 'TopologyModule', args: tuple, kwargs: dict, result):
-        kwargs['tag'] = '/'.join(self.get_tags()) + ': ' + kwargs.get('label')
+        kwargs['tag'] = '/'.join(self.get_tags())
         return result
 
     @staticmethod
@@ -42,7 +42,7 @@ class TopologyModule(nn.Module, TopologyBase):
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
             self.topology_modules[id(m)] = m
-            m.add_log_hook()  # Added once
+            m.add_or_skip_log_hook()  # Added once
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
 
     @staticmethod

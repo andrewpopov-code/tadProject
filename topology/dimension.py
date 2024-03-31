@@ -36,7 +36,7 @@ class IntrinsicDimension(TopologyModule):
             dim, err = dim[0], err[0]
 
         if kwargs.get('logging', True):
-            kwargs['writer'].add_scalar(kwargs['tag'] + '/ID Estimate', dim, self.step)
-            kwargs['writer'].add_scalar(kwargs['tag'] + '/ID Estimate Error', err, self.step)
+            kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', kwargs['tag'])), dim, self.step)
+            kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', kwargs['tag'])), err, self.step)
 
         return result

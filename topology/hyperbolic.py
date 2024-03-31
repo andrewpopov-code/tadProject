@@ -36,7 +36,7 @@ class DeltaHyperbolicity(TopologyModule):
             delta = delta[0]
 
         if kwargs.get('logging', True):
-            kwargs['writer'].add_scalar(kwargs['tag'], delta, self.step)
+            kwargs['writer'].add_scalar('/'.join((kwargs['label'], kwargs['tag'])), delta, self.step)
 
         return delta
 

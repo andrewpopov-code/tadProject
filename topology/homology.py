@@ -48,7 +48,7 @@ class Persistence(TopologyModule):
         if kwargs.get('logging', True):
             for j in range(bc.shape[1]):
                 kwargs['writer'].add_scalars(
-                    kwargs['tag'] + '/Betti Curves', {
+                    '/'.join((kwargs['label'] + ' (Betti Curves)', kwargs['tag'])), {
                         f'Dimension {i}': bc[i, j] for i in range(bc.shape[0])
                     }, j
                 )

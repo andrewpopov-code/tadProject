@@ -27,13 +27,13 @@ class Entropy(TopologyModule):
             if _entropy.ndim == 3:  # Multiple 'heads'
                 _entropy = _entropy.mean(dim=-1)
                 kwargs['writer'].add_scalars(
-                    kwargs['tag'], {
+                    '/'.join((kwargs['label'], kwargs['tag'])), {
                         f'Head {h}': _entropy[h] for h in range(entropy.shape[0])
                     }, self.step
                 )
             _entropy = _entropy.mean(dim=-1)
             kwargs['writer'].add_scalars(
-                kwargs['tag'], {f'Average Entropy': _entropy[0]}, self.step
+                '/'.join((kwargs['label'], kwargs['tag'])), {f'Average Entropy': _entropy[0]}, self.step
             )
 
         return entropy
