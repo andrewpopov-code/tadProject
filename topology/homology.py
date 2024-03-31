@@ -17,7 +17,11 @@ class Persistence(TopologyModule):
         self.Betti = BettiCurve()
         # self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, distances: bool = True):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, distances: bool = True):
+        if x.ndim == 2 + batches:
+            x = x.transpose(0 + batches, 1 + batches)
+        else:
+            x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
         if batches:
             pi, bc = [], []
             for b in range(x.shape[0]):

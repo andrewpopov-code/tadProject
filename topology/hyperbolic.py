@@ -12,9 +12,15 @@ class DeltaHyperbolicity(TopologyModule):
     def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
         super().__init__(tag=tag or f'Delta Hyperbolicity {id(self)}', parent=parent, writer=writer)
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, distances: bool = True):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, distances: bool = True):
         if not batches:
             x = x.unsqueeze(0)
+
+        if channel_first:
+            if x.ndim == 2 + batches:
+                x = x.transpose(0 + batches, 1 + batches)
+            else:
+                x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
 
         y = np.zeros(x.shape[0])
         for b in range(x.shape[0]):
