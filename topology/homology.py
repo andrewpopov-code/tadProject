@@ -44,9 +44,6 @@ class Persistence(TopologyModule):
 
     @staticmethod
     def log(self: 'Persistence', args: tuple, kwargs: dict, result):
-        if not kwargs.get('logging', True):
-            return result
-
         pi, bc = result
 
         if kwargs.get('batches', False):

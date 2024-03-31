@@ -101,9 +101,9 @@ class TopologyTrainingObserver(TopologyObserver):
         self.log_every_val = log_every_val
         self.val_step = 0
 
-        self.topology_modules_forward = {id(x): x.forward for x in self.topology_modules.values() if isinstance(x, TopologyModule)}
-
-        net.register_forward_pre_hook(self.suppress_topology)
+        for k in self.topology_modules:
+            if isinstance(self.topology_modules[k], TopologyModule):
+                self.topology_modules[k].forward = self.get_forward(self.topology_modules[k], self.topology_modules[k].forward)
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and id(m) not in self.topology_modules:
@@ -125,22 +125,17 @@ class TopologyTrainingObserver(TopologyObserver):
             kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
         return args, kwargs
 
-    def suppress_topology(self, m: nn.Module, args: tuple):
-        if self.topology_every or (
-            self.step % self.log_every_train == 0 if m.training
-            else self.val_step % self.log_every_val == 0
-        ):
-            for k in self.topology_modules:
-                if isinstance(self.topology_modules[k], TopologyModule):
-                    setattr(self.topology_modules[k], 'forward', self.topology_modules_forward[k])
-        else:
-            for k in self.topology_modules:
-                if isinstance(self.topology_modules[k], TopologyModule):
-                    setattr(self.topology_modules[k], 'forward', TopologyTrainingObserver.default_forward)
+    def get_forward(self, m: TopologyModule, f: Callable):
+        def forward(x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):
+            if self.topology_every or (
+                    self.step % self.log_every_train == 0 if m.training
+                    else self.val_step % self.log_every_val == 0
+            ):
+                return f(x, label=label, logging=logging, batches=batches, channel_first=channel_first, **kwargs)
+            else:
+                return None
 
-    @staticmethod
-    def default_forward(self: TopologyModule, *args, **kwargs):
-        return None
+        return forward
 
     def flush(self):
         self.val_step = 0

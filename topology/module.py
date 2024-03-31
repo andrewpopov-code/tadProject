@@ -10,8 +10,8 @@ class TopologyModule(nn.Module, TopologyBase):
         nn.Module.__init__(self)
         TopologyBase.__init__(self, tag=tag or f'Topology Module {id(self)}', parent=parent, writer=writer)
         self.register_forward_hook(self.increment)
-        self.added_log_hook = False
         self.apply(self.register)
+        self.added_log_hook = False
 
     @staticmethod
     def post_init(self: 'TopologyModule', args: tuple):
@@ -24,9 +24,10 @@ class TopologyModule(nn.Module, TopologyBase):
         if self.added_log_hook:
             return
 
-        self.register_forward_hook(self.log, prepend=True, with_kwargs=True)
+        self.register_forward_hook(self._log, prepend=True, with_kwargs=True)
         self.register_forward_hook(self.writer_hook, prepend=True, with_kwargs=True)
         self.register_forward_hook(self.tag_hook, prepend=True, with_kwargs=True)
+
         self.added_log_hook = True
 
     @staticmethod
@@ -44,6 +45,12 @@ class TopologyModule(nn.Module, TopologyBase):
             self.topology_modules[id(m)] = m
             m.add_or_skip_log_hook()  # Added once
             m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
+
+    @staticmethod
+    def _log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
+        if kwargs.get('logging', True):
+            return self.log(self, args, kwargs, result)
+        return result
 
     @staticmethod
     def log(self: 'TopologyModule', args: tuple, kwargs: dict, result):

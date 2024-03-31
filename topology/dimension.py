@@ -35,9 +35,6 @@ class IntrinsicDimension(TopologyModule):
 
     @staticmethod
     def log(self: 'IntrinsicDimension', args: tuple, kwargs: dict, result):
-        if not kwargs.get('logging', True):
-            return result
-
         dim, err = result
         if kwargs.get('batches', False):
             dim, err = dim[0], err[0]
