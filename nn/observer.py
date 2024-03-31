@@ -69,7 +69,7 @@ class TopologyObserver(TopologyBase):
         net.apply(self.register)
 
     def register(self, m: nn.Module):
-        if isinstance(m, TopologyModule):
+        if isinstance(m, TopologyModule) and m is not self.net:
             self.topology_modules[id(m)] = m
             m.add_or_skip_log_hook()
             if m.parent() is None or self.reset:
@@ -92,12 +92,18 @@ class TopologyTrainingObserver(TopologyObserver):
             post_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
-            log_every_train: int = 1, log_every_val: int = 1
+            log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False
     ):
         super().__init__(net, topology_modules=topology_modules, writer=writer, reset=reset, pre_topology=pre_topology, post_topology=post_topology)
+
         self.log_every_train = log_every_train
+        self.topology_every = topology_every
         self.log_every_val = log_every_val
         self.val_step = 0
+
+        self.topology_modules_forward = {id(x): x.forward for x in self.topology_modules.values() if isinstance(x, TopologyModule)}
+
+        net.register_forward_pre_hook(self.suppress_topology)
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and id(m) not in self.topology_modules:
@@ -115,8 +121,26 @@ class TopologyTrainingObserver(TopologyObserver):
         return result
 
     def set_logging(self, m: TopologyModule, args: tuple, kwargs: dict):
-        kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
+        if kwargs.get('logging', True):  # Maybe set to False in the forward(...) call
+            kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
         return args, kwargs
+
+    def suppress_topology(self, m: nn.Module, args: tuple):
+        if self.topology_every or (
+            self.step % self.log_every_train == 0 if m.training
+            else self.val_step % self.log_every_val == 0
+        ):
+            for k in self.topology_modules:
+                if isinstance(self.topology_modules[k], TopologyModule):
+                    setattr(self.topology_modules[k], 'forward', self.topology_modules_forward[k])
+        else:
+            for k in self.topology_modules:
+                if isinstance(self.topology_modules[k], TopologyModule):
+                    setattr(self.topology_modules[k], 'forward', TopologyTrainingObserver.default_forward)
+
+    @staticmethod
+    def default_forward(self: TopologyModule, *args, **kwargs):
+        return None
 
     def flush(self):
         self.val_step = 0
@@ -126,5 +150,5 @@ class TopologyTrainingObserver(TopologyObserver):
         if self.net.training:
             tag = f' (Training Call {self.step})'
         else:
-            tag = f' (Validation Call {self.step} + {self.val_step}'
+            tag = f' (Validation Call {self.step - 1} + {self.val_step})'
         return [self.tag + tag]

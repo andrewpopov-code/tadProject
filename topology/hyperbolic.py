@@ -38,11 +38,12 @@ class DeltaHyperbolicity(TopologyModule):
 
     @staticmethod
     def log(self: 'DeltaHyperbolicity', args: tuple, kwargs: dict, delta):
+        if not kwargs.get('logging', True):
+            return delta
+
         if kwargs.get('batches', False):
             delta = delta[0]
-
-        if kwargs.get('logging', True):
-            kwargs['writer'].add_scalar('/'.join((kwargs['label'], kwargs['tag'])), delta, self.step)
+        kwargs['writer'].add_scalar('/'.join((kwargs['label'], kwargs['tag'])), delta, self.step)
 
         return delta
 

@@ -35,13 +35,14 @@ class IntrinsicDimension(TopologyModule):
 
     @staticmethod
     def log(self: 'IntrinsicDimension', args: tuple, kwargs: dict, result):
-        dim, err = result
+        if not kwargs.get('logging', True):
+            return result
 
+        dim, err = result
         if kwargs.get('batches', False):
             dim, err = dim[0], err[0]
 
-        if kwargs.get('logging', True):
-            kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', kwargs['tag'])), dim, self.step)
-            kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', kwargs['tag'])), err, self.step)
+        kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', kwargs['tag'])), dim, self.step)
+        kwargs['writer'].add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', kwargs['tag'])), err, self.step)
 
         return result

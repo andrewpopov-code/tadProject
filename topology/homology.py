@@ -44,18 +44,20 @@ class Persistence(TopologyModule):
 
     @staticmethod
     def log(self: 'Persistence', args: tuple, kwargs: dict, result):
+        if not kwargs.get('logging', True):
+            return result
+
         pi, bc = result
 
         if kwargs.get('batches', False):
             pi, bc = pi[0], bc[0]
 
-        if kwargs.get('logging', True):
-            for j in range(bc.shape[1]):
-                kwargs['writer'].add_scalars(
-                    '/'.join((kwargs['label'] + ' (Betti Curves)', kwargs['tag'])), {
-                        f'Dimension {i}': bc[i, j] for i in range(bc.shape[0])
-                    }, j
-                )
+        for j in range(bc.shape[1]):
+            kwargs['writer'].add_scalars(
+                '/'.join((kwargs['label'] + ' (Betti Curves)', kwargs['tag'])), {
+                    f'Dimension {i}': bc[i, j] for i in range(bc.shape[0])
+                }, j
+            )
 
         # TODO: add persistence diagrams
         return result
