@@ -11,7 +11,7 @@ class Entropy(TopologyModule):
         super().__init__(tag=tag or f'Entropy Profile {id(self)}', parent=parent, writer=writer)
         self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
 
-    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True):
+    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True):
         if not channel_first:
             prob = prob.transpose(0 + batches, 1 + batches)
         return self.entropy(prob)
@@ -22,7 +22,7 @@ class Entropy(TopologyModule):
         return [self.tag]
 
     def log(self, args: tuple, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
-        _entropy = entropy[0] if kwargs.get('batches', False) else entropy
+        _entropy = entropy[0] if kwargs.get('batches', True) else entropy
 
         if _entropy.ndim == 3:  # Multiple 'heads'
             _entropy = _entropy.mean(dim=-1)

@@ -17,17 +17,22 @@ class Persistence(TopologyModule):
         self.Betti = BettiCurve()
         # self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, distances: bool = True):
-        if x.ndim == 2 + batches:
-            x = x.transpose(0 + batches, 1 + batches)
-        else:
-            x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
+        if channel_first:
+            if x.ndim == 2 + batches:
+                x = x.transpose(0 + batches, 1 + batches)
+            else:
+                x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
+
         if batches:
             pi, bc = [], []
             for b in range(x.shape[0]):
                 d = (compute_unique_distances(x[b]) if not distances else x[b]).unsqueeze(0)
+                print('Computed distances')
                 pi.append(self.VR.fit_transform(d)[0])
+                print('Computed homologies')
                 bc.append(self.Betti.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
+                print('Computed betti curves')
         else:
             d = (compute_unique_distances(x) if not distances else x).unsqueeze(0)
             pi = self.VR.fit_transform(d)
@@ -45,7 +50,7 @@ class Persistence(TopologyModule):
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         pi, bc = result
 
-        if kwargs.get('batches', False):
+        if kwargs.get('batches', True):
             pi, bc = pi[0], bc[0]
 
         for j in range(bc.shape[1]):

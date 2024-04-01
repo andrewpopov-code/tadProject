@@ -38,7 +38,7 @@ class TopologyObserver(TopologyBase):
     # Hooks to a network and fires when it is called | Hooks to modules assuming they're in the same network
     def __init__(
             self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
-            writer: SummaryWriter = None, reset: bool = True,
+            writer: SummaryWriter = None, reset: bool = False,
             pre_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
@@ -85,7 +85,7 @@ class TopologyObserver(TopologyBase):
 class TopologyTrainingObserver(TopologyObserver):
     def __init__(
             self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
-            writer: SummaryWriter = None,
+            writer: SummaryWriter = None, reset: bool = False,
             pre_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
@@ -94,7 +94,7 @@ class TopologyTrainingObserver(TopologyObserver):
             ]] = (),
             log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False
     ):
-        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=True, pre_topology=pre_topology, post_topology=post_topology)
+        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=reset, pre_topology=pre_topology, post_topology=post_topology)
 
         self.log_every_train = log_every_train
         self.topology_every = topology_every

@@ -12,7 +12,7 @@ class DeltaHyperbolicity(TopologyModule):
     def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
         super().__init__(tag=tag or f'Delta Hyperbolicity {id(self)}', parent=parent, writer=writer)
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, distances: bool = True):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
         if not batches:
             x = x.unsqueeze(0)
 
@@ -37,7 +37,7 @@ class DeltaHyperbolicity(TopologyModule):
         return y if batches else y[0]
 
     def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
-        if kwargs.get('batches', False):
+        if kwargs.get('batches', True):
             delta = delta[0]
         writer.add_scalar('/'.join((kwargs['label'], tag)), delta, self.step)
 

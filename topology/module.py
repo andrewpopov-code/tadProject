@@ -40,7 +40,7 @@ class TopologyModule(nn.Module, TopologyBase):
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         ...
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, **kwargs):
         ...
 
     @staticmethod
