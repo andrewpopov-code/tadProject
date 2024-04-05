@@ -11,7 +11,7 @@ class Entropy(TopologyModule):
         super().__init__(tag=tag or f'Entropy Profile {id(self)}', parent=parent, writer=writer)
         self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
 
-    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True):
+    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, vectors: bool = True):
         if not channel_first:
             prob = prob.transpose(0 + batches, 1 + batches)
         return self.entropy(prob)
@@ -22,6 +22,31 @@ class Entropy(TopologyModule):
         return [self.tag]
 
     def log(self, args: tuple, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
+        if kwargs.get('vectors', True):
+            return self.log_cloud(kwargs, entropy, tag, writer)
+        else:
+            return self.log_cloud(kwargs, entropy, tag, writer)
+
+    def log_cloud(self, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
+        # TODO: figure out if this is correct
+        _entropy = entropy[0] if kwargs.get('batches', True) else entropy
+
+        if _entropy.ndim == 2:  # Multiple 'heads'
+            _entropy = _entropy.mean(dim=-1)
+            writer.add_scalars(
+                '/'.join((kwargs['label'], tag)), {
+                    f'Head {h}': _entropy[h] for h in range(entropy.shape[0])
+                }, self.step
+            )
+
+        _entropy = _entropy.mean(dim=-1)
+        writer.add_scalars(
+            '/'.join((kwargs['label'], tag)), {f'Average Entropy': _entropy[0]}, self.step
+        )
+
+        return entropy
+
+    def log_heads(self, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
         _entropy = entropy[0] if kwargs.get('batches', True) else entropy
 
         if _entropy.ndim == 3:  # Multiple 'heads'

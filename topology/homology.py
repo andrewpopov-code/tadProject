@@ -1,20 +1,34 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from gtda.diagrams import PairwiseDistance, BettiCurve
+from gtda.diagrams import PairwiseDistance, BettiCurve, PersistenceEntropy
 from gtda.homology import VietorisRipsPersistence
+
+from dataclasses import dataclass
 
 from utils import draw_heatmap, compute_unique_distances
 from .base import TopologyBase
 from .module import TopologyModule
 
 
+@dataclass
+class PersistenceInformation:
+    diagram: np.array
+    betti: np.array
+    entropy: np.array
+    persistence: np.array
+
+
 class Persistence(TopologyModule):
     def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None, homology_dim: int = 1):
         super().__init__(tag=tag or f'Persistence Profile {id(self)}', parent=parent, writer=writer)
         self.VR = VietorisRipsPersistence(metric='precomputed', homology_dimensions=tuple(range(homology_dim + 1)))
-        self.PD = PairwiseDistance(metric='wasserstein')
+        self.PE = PersistenceEntropy(normalize=True)
+        # self.PD = PairwiseDistance(metric='wasserstein')
         self.Betti = BettiCurve()
+
+        self.homology_dim = homology_dim
         # self.diagrams = []  # to compute the heatmap
 
     def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
@@ -25,20 +39,29 @@ class Persistence(TopologyModule):
                 x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
 
         if batches:
-            pi, bc = [], []
+            pi, bc, pe, persistence = [], [], [], []
             for b in range(x.shape[0]):
                 d = (compute_unique_distances(x[b]) if not distances else x[b]).unsqueeze(0)
-                print('Computed distances')
                 pi.append(self.VR.fit_transform(d)[0])
-                print('Computed homologies')
                 bc.append(self.Betti.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
-                print('Computed betti curves')
+                pe.append(self.PE.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
+
+                z = torch.zeros(self.homology_dim)
+                for start, end, dim in pi[-1]:
+                   z[int(dim)] += end - start
+                persistence.append(z)
         else:
             d = (compute_unique_distances(x) if not distances else x).unsqueeze(0)
-            pi = self.VR.fit_transform(d)
-            bc = self.Betti.fit_transform(pi)
 
-        return pi, bc
+            pi = self.VR.fit_transform(d)[0]
+            bc = self.Betti.fit_transform(pi)[0]
+            pe = self.PE.fit_transform(pi)[0]
+
+            persistence = torch.zeros(self.homology_dim)
+            for start, end, dim in pi:
+                persistence[int(dim)] += end - start
+
+        return PersistenceInformation(diagram=pi, betti=bc, entropy=pe, persistence=persistence)
 
     # def heatmap(self):
     #     d = torch.zeros((len(self.diagrams), len(self.diagrams)))
@@ -47,11 +70,11 @@ class Persistence(TopologyModule):
     #             d[i, j] = d[j, i] = self.PD.fit(self.diagrams[i]).transform(self.diagrams[j])[0]
     #     return d
 
-    def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
-        pi, bc = result
+    def log(self, args: tuple, kwargs: dict, result: PersistenceInformation, tag: str, writer: SummaryWriter):
+        pi, bc, entropy, persistence = result.diagram, result.betti, result.entropy, result.persistence
 
         if kwargs.get('batches', True):
-            pi, bc = pi[0], bc[0]
+            pi, bc, entropy, persistence = pi[0], bc[0], entropy[0], persistence[0]
 
         for j in range(bc.shape[1]):
             writer.add_scalars(
@@ -60,7 +83,7 @@ class Persistence(TopologyModule):
                 }, j
             )
 
-        # TODO: add persistence diagrams
+        # TODO: add persistence diagrams, persistence entropy, persistence metric
         return result
 
     # def finalize(self, encoder_step: int):

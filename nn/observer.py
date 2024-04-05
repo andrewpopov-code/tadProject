@@ -5,6 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from typing import Callable, Union
 
 from topology import TopologyBase, TopologyModule
+from .mixin import TopologyMixin
 
 
 class _Hook:
@@ -38,7 +39,7 @@ class TopologyObserver(TopologyBase):
     # Hooks to a network and fires when it is called | Hooks to modules assuming they're in the same network
     def __init__(
             self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
-            writer: SummaryWriter = None, reset: bool = False,
+            writer: SummaryWriter = None, reset: bool = False, connect: bool = False, batches: bool = True,
             pre_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
@@ -52,7 +53,9 @@ class TopologyObserver(TopologyBase):
             layers=topology_modules
         )
         self.reset = reset
+        self.connect = connect
         self.net = net
+        self.batches = batches
 
         for m, tms in post_topology:
             for tm, kwargs, *f in tms:
@@ -66,14 +69,15 @@ class TopologyObserver(TopologyBase):
         net.register_forward_hook(self.increment)
         for m in topology_modules:
             self.register(m)
-        net.apply(self.register)
+        # net.apply(self.register)  TODO: figure out if we need this
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self.net:
             self.topology_children[id(m)] = m
             m.add_or_skip_log_hook()
-            if m.parent() is None or self.reset:
+            if m.parent() is None or (isinstance(m.parent(), TopologyObserver) and self.reset) or self.connect:
                 m.set_parent(self)  # Set to be the observer
+            m.register_forward_hook(self.set_batches, with_kwargs=True)
 
     def increment(self, m: nn.Module, args: tuple, result):
         self.step += 1
@@ -81,11 +85,16 @@ class TopologyObserver(TopologyBase):
             self.topology_children[k].flush()
         return result
 
+    def set_batches(self, m: TopologyModule, args: tuple, kwargs: dict):
+        if m.maximal_parent() is self:
+            kwargs['batches'] = self.batches
+        return args, kwargs
+
 
 class TopologyTrainingObserver(TopologyObserver):
     def __init__(
             self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
-            writer: SummaryWriter = None, reset: bool = False,
+            writer: SummaryWriter = None, reset: bool = False, connect: bool = False,
             pre_topology: list[Union[
                 tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
             ]] = (),
@@ -94,7 +103,8 @@ class TopologyTrainingObserver(TopologyObserver):
             ]] = (),
             log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False
     ):
-        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=reset, pre_topology=pre_topology, post_topology=post_topology)
+        super().__init__(net, topology_modules=topology_modules, writer=writer, reset=reset, connect=connect,
+                         pre_topology=pre_topology, post_topology=post_topology)
 
         self.log_every_train = log_every_train
         self.topology_every = topology_every
@@ -103,7 +113,8 @@ class TopologyTrainingObserver(TopologyObserver):
 
         for k in self.topology_children:
             if isinstance(self.topology_children[k], TopologyModule):
-                self.topology_children[k].forward = self.get_forward(self.topology_children[k], self.topology_children[k].forward)
+                self.topology_children[k].forward = self.get_forward(self.topology_children[k],
+                                                                     self.topology_children[k].forward)
 
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule):
@@ -121,12 +132,14 @@ class TopologyTrainingObserver(TopologyObserver):
         return result
 
     def set_logging(self, m: TopologyModule, args: tuple, kwargs: dict):
-        if kwargs.get('logging', True) and m.parent() is self:  # May be set to False in the forward(...) call
-            kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
+        if kwargs.get('logging', True) and m.maximal_parent() is self:  # May be set to False in the forward(...) call
+            kwargs['logging'] = (
+                                    self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
         return args, kwargs
 
     def get_forward(self, m: TopologyModule, f: Callable):
-        def forward(x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False, channel_first: bool = True, **kwargs):
+        def forward(x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = False,
+                    channel_first: bool = True, **kwargs):
             if self.topology_every or logging:
                 return f(x, label=label, logging=logging, batches=batches, channel_first=channel_first, **kwargs)
             else:
@@ -144,3 +157,35 @@ class TopologyTrainingObserver(TopologyObserver):
         else:
             tag = f' (Validation Call {self.step - 1} + {self.val_step})'
         return [self.tag + tag]
+
+
+class AttentionTopologyObserver(TopologyObserver):
+    ...
+
+
+class AttentionTopologyTrainingObserver(TopologyTrainingObserver):
+    ...
+
+
+class EmbeddingTopologyTrainingObserver(TopologyTrainingObserver, TopologyMixin):
+    def __init__(self, net: nn.Module, *, embedding_modules: list[nn.Embedding] = (),
+                 writer: SummaryWriter = None, reset: bool = False, connect: bool = False,
+                 log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False):
+        TopologyTrainingObserver.__init__(
+            self, net, writer=writer, reset=reset, connect=connect,
+            log_every_train=log_every_train, log_every_val=log_every_val, topology_every=topology_every
+        )
+        TopologyMixin.__init__(self, tag=f'Latent Space Topology {id(self)}', writer=writer)
+
+        self.embedding_modules = embedding_modules
+
+        # Register topology modules after net makes a forward training / validation step
+        net.register_forward_hook(self.embedding_topology)
+
+    def embedding_topology(self, s: nn.Module, args: tuple, result):
+        for em in self.embedding_modules:
+            self.Filtration(em.weight, label=f'Embedding Module {id(em)}', batches=False)
+            self.Dimension(em.weight, label=f'Embedding Module {id(em)}', batches=False)
+            self.DeltaHyperbolicity(em.weight, label=f'Embedding Module {id(em)}', batches=False)
+
+        return result

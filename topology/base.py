@@ -20,6 +20,12 @@ class TopologyBase:
     def set_parent(self, parent: ['TopologyBase', None]):
         self._parent.obj = parent
 
+    def maximal_parent(self):
+        parent = self.parent()
+        if parent is not None:
+            return parent.maximal_parent()
+        return self
+
     def get_writer(self):
         if self.parent() is not None:
             return self.writer or self.parent().get_writer()
