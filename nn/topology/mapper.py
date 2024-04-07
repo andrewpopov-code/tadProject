@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from .topologybase import TopologyBase
+from ..base import TopologyBase
 
 
 class Mapper(TopologyBase):

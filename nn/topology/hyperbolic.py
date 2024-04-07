@@ -1,18 +1,19 @@
 import torch
-import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
-from .base import TopologyBase
-from .module import TopologyModule
+from nn.base import TopologyBase
+from nn.module import TopologyModule
 from utils import compute_unique_distances
 
 
 class DeltaHyperbolicity(TopologyModule):
-    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
-        super().__init__(tag=tag or f'Delta Hyperbolicity {id(self)}', parent=parent, writer=writer)
+    DISTANCES = False
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, distances: bool = False):
+    def __init__(self, tag: str = None, parents: list[TopologyBase] = (), writer: SummaryWriter = None):
+        super().__init__(tag=tag or f'Delta Hyperbolicity {id(self)}', parents=parents, writer=writer)
+
+    def forward(self, x: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, distances: bool = DISTANCES):
         if channel_first:
             if x.ndim == 3:
                 x = x.transpose(1, 2)
@@ -39,7 +40,5 @@ class DeltaHyperbolicity(TopologyModule):
 
         return delta
 
-    def get_tags(self):
-        if self.parent() is not None:
-            return self.parent().get_tags() + [self.tag]
-        return [self.tag]
+    def get_tag(self):
+        return self.tag

@@ -33,12 +33,11 @@ def compute_unique_distances(x: torch.Tensor):
     return euclidean_dist(x, x)
 
 
-def draw_heatmap(d: torch.Tensor, writer: SummaryWriter, tag: str, title: str):
+def draw_heatmap(d: torch.Tensor):
     fig, ax = plt.subplots()
     ax.imshow(d)
     for i in range(d.shape[0]):
         for j in range(d.shape[1]):
-            ax.text(j, i, d[i, j], ha='center', va='center', color='w')
+            ax.text(j, i, d[i, j].item(), ha='center', va='center', color='w')
     fig.tight_layout()
-
-    writer.add_figure('/'.join((tag, title)), fig)
+    return fig

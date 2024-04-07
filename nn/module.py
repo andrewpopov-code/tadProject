@@ -6,19 +6,16 @@ from .base import TopologyBase
 
 
 class TopologyModule(nn.Module, TopologyBase):
-    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
+    LABEL = ''
+    LOGGING = True
+    CF = True
+
+    def __init__(self, tag: str = None, parents: [TopologyBase] = (), writer: SummaryWriter = None):
         nn.Module.__init__(self)
-        TopologyBase.__init__(self, tag=tag or f'Topology Module {id(self)}', parent=parent, writer=writer)
+        TopologyBase.__init__(self, tag=tag or f'Topology Module {id(self)}', parents=parents, writer=writer)
         self.register_forward_hook(self.increment)
         self.apply(self.register)
         self.added_log_hook = False
-
-    @staticmethod
-    def post_init(self: 'TopologyModule', args: tuple):
-        self.apply(self.register)
-        self.post_init_handle.remove()
-
-        return args
 
     def add_or_skip_log_hook(self):
         if not self.added_log_hook:
@@ -28,20 +25,24 @@ class TopologyModule(nn.Module, TopologyBase):
     def register(self, m: nn.Module):
         if isinstance(m, TopologyModule) and m is not self:
             self.topology_children[id(m)] = m
-            m.add_or_skip_log_hook()  # Added once
-            m.set_parent(self)  # Set by the immediate parent: last forward call is performed closest to the module
+            m.add_parent(self)
 
     @staticmethod
     def _log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
-        writer = self.get_writer()
-        if kwargs.get('logging', True) and writer is not None:
-            return self.log(args, kwargs, result, '/'.join(self.get_tags()), writer)
+        if not kwargs.get('logging', True):
+            return result
+
+        tags = self.get_tags()
+        for ws, ts in tags:
+            for w in ws:
+                self.log(args, kwargs, result, '/'.join(ts), w)
+
         return result
 
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         ...
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, **kwargs):
+    def forward(self, x: torch.Tensor, *, label: str = LABEL, logging: bool = LOGGING, channel_first: bool = CF, **kwargs):
         ...
 
     @staticmethod

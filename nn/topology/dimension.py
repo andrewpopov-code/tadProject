@@ -1,18 +1,20 @@
 import torch
-import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from dadapy import data
 
-from .base import TopologyBase
-from .module import TopologyModule
+from ..base import TopologyBase
+from ..module import TopologyModule
 from utils import compute_unique_distances
 
 
 class IntrinsicDimension(TopologyModule):
-    def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
-        super().__init__(tag=tag or f'ID Profile {id(self)}', parent=parent, writer=writer)
+    # TODO: integrate estimators from functional
+    DISTANCES = False
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, distances: bool = False):
+    def __init__(self, tag: str = None, parents: [TopologyBase] = (), writer: SummaryWriter = None):
+        super().__init__(tag=tag or f'ID Profile {id(self)}', parents=parents, writer=writer)
+
+    def forward(self, x: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, distances: bool = DISTANCES):
         if channel_first:
             if x.ndim == 3:
                 x = x.transpose(1, 2)
@@ -24,10 +26,8 @@ class IntrinsicDimension(TopologyModule):
             dim[b], err[b], _ = data.Data(distances=d.detach().numpy()).compute_id_2NN()
         return dim, err
 
-    def get_tags(self):
-        if self.parent() is not None:
-            return self.parent().get_tags() + [self.tag]
-        return [self.tag]
+    def get_tag(self):
+        return self.tag
 
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         dim, err = result
