@@ -31,35 +31,24 @@ class Persistence(TopologyModule):
         self.homology_dim = homology_dim
         # self.diagrams = []  # to compute the heatmap
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, distances: bool = False):
         if channel_first:
-            if x.ndim == 2 + batches:
-                x = x.transpose(0 + batches, 1 + batches)
+            if x.ndim == 3:
+                x = x.transpose(1, 2)
             else:
-                x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
+                x = x.transpose(1, 2).transpose(2, 3)
 
-        if batches:
-            pi, bc, pe, persistence = [], [], [], []
-            for b in range(x.shape[0]):
-                d = (compute_unique_distances(x[b]) if not distances else x[b]).unsqueeze(0)
-                pi.append(self.VR.fit_transform(d)[0])
-                bc.append(self.Betti.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
-                pe.append(self.PE.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
+        pi, bc, pe, persistence = [], [], [], []
+        for b in range(x.shape[0]):
+            d = (compute_unique_distances(x[b]) if not distances else x[b]).unsqueeze(0)
+            pi.append(self.VR.fit_transform(d)[0])
+            bc.append(self.Betti.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
+            pe.append(self.PE.fit_transform(pi[-1].reshape(-1, *pi[-1].shape))[0])
 
-                z = torch.zeros(self.homology_dim)
-                for start, end, dim in pi[-1]:
-                   z[int(dim)] += end - start
-                persistence.append(z)
-        else:
-            d = (compute_unique_distances(x) if not distances else x).unsqueeze(0)
-
-            pi = self.VR.fit_transform(d)[0]
-            bc = self.Betti.fit_transform(pi)[0]
-            pe = self.PE.fit_transform(pi)[0]
-
-            persistence = torch.zeros(self.homology_dim)
-            for start, end, dim in pi:
-                persistence[int(dim)] += end - start
+            z = torch.zeros(self.homology_dim + 1)
+            for start, end, dim in pi[-1]:
+                z[int(dim)] += end - start
+            persistence.append(z)
 
         return PersistenceInformation(diagram=pi, betti=bc, entropy=pe, persistence=persistence)
 
@@ -72,9 +61,7 @@ class Persistence(TopologyModule):
 
     def log(self, args: tuple, kwargs: dict, result: PersistenceInformation, tag: str, writer: SummaryWriter):
         pi, bc, entropy, persistence = result.diagram, result.betti, result.entropy, result.persistence
-
-        if kwargs.get('batches', True):
-            pi, bc, entropy, persistence = pi[0], bc[0], entropy[0], persistence[0]
+        pi, bc, entropy, persistence = pi[0], bc[0], entropy[0], persistence[0]
 
         for j in range(bc.shape[1]):
             writer.add_scalars(

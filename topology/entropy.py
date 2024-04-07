@@ -11,9 +11,9 @@ class Entropy(TopologyModule):
         super().__init__(tag=tag or f'Entropy Profile {id(self)}', parent=parent, writer=writer)
         self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
 
-    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, vectors: bool = True):
-        if not channel_first:
-            prob = prob.transpose(0 + batches, 1 + batches)
+    def forward(self, prob: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, vectors: bool = True):
+        if not channel_first:  # TODO: fix vectors or one channel squeezed tensors
+            prob = prob.transpose(1, 2)
         return self.entropy(prob)
 
     def get_tags(self):
@@ -29,7 +29,7 @@ class Entropy(TopologyModule):
 
     def log_cloud(self, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
         # TODO: figure out if this is correct
-        _entropy = entropy[0] if kwargs.get('batches', True) else entropy
+        _entropy = entropy[0]
 
         if _entropy.ndim == 2:  # Multiple 'heads'
             _entropy = _entropy.mean(dim=-1)
@@ -47,7 +47,7 @@ class Entropy(TopologyModule):
         return entropy
 
     def log_heads(self, kwargs: dict, entropy: torch.Tensor, tag: str, writer: SummaryWriter):
-        _entropy = entropy[0] if kwargs.get('batches', True) else entropy
+        _entropy = entropy[0]
 
         if _entropy.ndim == 3:  # Multiple 'heads'
             _entropy = _entropy.mean(dim=-1)

@@ -12,21 +12,16 @@ class IntrinsicDimension(TopologyModule):
     def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
         super().__init__(tag=tag or f'ID Profile {id(self)}', parent=parent, writer=writer)
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, distances: bool = False):
         if channel_first:
-            if x.ndim == 2 + batches:
-                x = x.transpose(0 + batches, 1 + batches)
+            if x.ndim == 3:
+                x = x.transpose(1, 2)
             else:
-                x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
-        if batches:
-            dim, err = torch.zeros(x.shape[0]), torch.zeros(x.shape[0])
-            for b in range(x.shape[0]):
-                d = compute_unique_distances(x[b]) if not distances else x[b]
-                dim[b], err[b], _ = data.Data(distances=d.detach().numpy()).compute_id_2NN()
-        else:
-            d = compute_unique_distances(x) if not distances else x
-            dim, err, _ = data.Data(distances=d.detach().numpy()).compute_id_2NN()
-        print(dim, err)
+                x = x.transpose(1, 2).transpose(2, 3)
+        dim, err = torch.zeros(x.shape[0]), torch.zeros(x.shape[0])
+        for b in range(x.shape[0]):
+            d = compute_unique_distances(x[b]) if not distances else x[b]
+            dim[b], err[b], _ = data.Data(distances=d.detach().numpy()).compute_id_2NN()
         return dim, err
 
     def get_tags(self):
@@ -36,8 +31,7 @@ class IntrinsicDimension(TopologyModule):
 
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         dim, err = result
-        if kwargs.get('batches', True):
-            dim, err = dim[0], err[0]
+        dim, err = dim[0], err[0]
 
         writer.add_scalar('/'.join((kwargs['label'] + ' (ID Estimate)', tag)), dim, self.step)
         writer.add_scalar('/'.join((kwargs['label'] + ' (ID Estimate Error)', tag)), err, self.step)

@@ -12,17 +12,14 @@ class DeltaHyperbolicity(TopologyModule):
     def __init__(self, tag: str = None, parent: TopologyBase = None, writer: SummaryWriter = None):
         super().__init__(tag=tag or f'Delta Hyperbolicity {id(self)}', parent=parent, writer=writer)
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, distances: bool = False):
-        if not batches:
-            x = x.unsqueeze(0)
-
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, distances: bool = False):
         if channel_first:
-            if x.ndim == 2 + batches:
-                x = x.transpose(0 + batches, 1 + batches)
+            if x.ndim == 3:
+                x = x.transpose(1, 2)
             else:
-                x = x.transpose(0 + batches, 1 + batches).transpose(1 + batches, 2 + batches)
+                x = x.transpose(1, 2).transpose(2, 3)
 
-        y = np.zeros(x.shape[0])
+        delta = np.zeros(x.shape[0])
         for b in range(x.shape[0]):
             d = (compute_unique_distances(x[b]) if not distances else x[b]).detach().numpy()
             p = 0
@@ -31,14 +28,13 @@ class DeltaHyperbolicity(TopologyModule):
             XY_p = 0.5 * (row + col - d)
             maxmin = np.max(np.minimum(XY_p[:, :, None], XY_p[None, :, :]), axis=1)
 
-            y[b] = np.max(maxmin - XY_p)
-        y = torch.tensor(y)
+            delta[b] = np.max(maxmin - XY_p)
+        delta = torch.tensor(delta)
 
-        return y if batches else y[0]
+        return delta
 
     def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
-        if kwargs.get('batches', True):
-            delta = delta[0]
+        delta = delta[0]
         writer.add_scalar('/'.join((kwargs['label'], tag)), delta, self.step)
 
         return delta

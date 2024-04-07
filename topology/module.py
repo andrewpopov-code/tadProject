@@ -22,7 +22,7 @@ class TopologyModule(nn.Module, TopologyBase):
 
     def add_or_skip_log_hook(self):
         if not self.added_log_hook:
-            self.register_forward_hook(self._log, with_kwargs=True)
+            self.register_forward_hook(self._log, with_kwargs=True, prepend=True)
             self.added_log_hook = True
 
     def register(self, m: nn.Module):
@@ -33,14 +33,15 @@ class TopologyModule(nn.Module, TopologyBase):
 
     @staticmethod
     def _log(self: 'TopologyModule', args: tuple, kwargs: dict, result):
-        if kwargs.get('logging', True):
-            return self.log(args, kwargs, result, '/'.join(self.get_tags()), self.get_writer())
+        writer = self.get_writer()
+        if kwargs.get('logging', True) and writer is not None:
+            return self.log(args, kwargs, result, '/'.join(self.get_tags()), writer)
         return result
 
     def log(self, args: tuple, kwargs: dict, result, tag: str, writer: SummaryWriter):
         ...
 
-    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, batches: bool = True, channel_first: bool = True, **kwargs):
+    def forward(self, x: torch.Tensor, *, label: str = '', logging: bool = True, channel_first: bool = True, **kwargs):
         ...
 
     @staticmethod
