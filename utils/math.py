@@ -1,6 +1,4 @@
 import torch
-from torch.utils.tensorboard import SummaryWriter
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -31,13 +29,3 @@ def compute_unique_distances(x: torch.Tensor):
     x = x.detach().numpy()
     x = torch.tensor(unique_points(x))  # N x C
     return euclidean_dist(x, x)
-
-
-def draw_heatmap(d: torch.Tensor):
-    fig, ax = plt.subplots()
-    ax.imshow(d)
-    for i in range(d.shape[0]):
-        for j in range(d.shape[1]):
-            ax.text(j, i, d[i, j].item(), ha='center', va='center', color='w')
-    fig.tight_layout()
-    return fig

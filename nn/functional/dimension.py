@@ -9,7 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 
-from utils import unique_points
+from utils.math import unique_points
 
 
 def _dist(i, j, d, m):
@@ -93,12 +93,10 @@ def mle(X: np.array, k: int = 5):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
-    return 1 / np.log(np.expand_dims(distances[:, k - 1], 1) / distances[:, :k - 1]).mean()
+    return 1 / (np.log(np.expand_dims(distances[:, -1], 1) / distances).sum(axis=-1) / (k - 1)).mean()
 
 
-def mm(X: np.array, k: int):
-    # TODO: figure out if this is correct
-
+def mm(X: np.array, k: int = 5):
     X = unique_points(X)
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
@@ -108,12 +106,35 @@ def mm(X: np.array, k: int):
     return -m1 / (m1 - w)
 
 
+def ols(X: np.array, k: int = 5):
+    X = unique_points(X)
+    nn = NearestNeighbors(n_neighbors=k).fit(X)
+    distances, _ = nn.kneighbors()
+
+    y = np.zeros(distances)
+    for i in range(k):
+        y[:, i] = distances[:, i] * (distances == distances[:, i].reshape(-1, 1)).sum(axis=-1) / (i + 1)
+
+    d = np.zeros(X.shape[0])
+    for i in range(X.shape[0]):
+        lr = LinearRegression(fit_intercept=False).fit(distances[i], y[i])
+        d[i] = lr.coef_[0, 0]
+
+    return d.mean()
+
+
 def pca(X: np.array, explained_variance: float = 0.95):
     X = unique_points(X)
     pca = PCA(n_components=explained_variance)
     pca.fit(X)
 
     return pca.n_components_
+
+
+def local_pca(X: np.array):
+    pca = PCA().fit(X)
+    explained_var = pca.explained_variance_
+    return np.sum(explained_var > np.mean(explained_var))
 
 
 def two_nn(X: np.array):

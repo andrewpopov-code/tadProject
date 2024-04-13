@@ -3,6 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ..base import TopologyBase
 from ..module import TopologyModule
+from ..functional import entropy as f_entropy
 
 
 class Entropy(TopologyModule):
@@ -64,4 +65,4 @@ class Entropy(TopologyModule):
         return entropy
 
     def entropy(self, prob: torch.Tensor):
-        return (-prob * self.logarithm(prob)).sum(dim=-1)
+        return torch.tensor(f_entropy(prob.detach().numpy(), self.logarithm))

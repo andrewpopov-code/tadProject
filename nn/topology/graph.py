@@ -1,29 +1,70 @@
 import networkx as nx
 from GraphRicciCurvature.OllivierRicci import OllivierRicci
+from GraphRicciCurvature.FormanRicci import FormanRicci
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from nn.base import TopologyBase
+from ..module import TopologyModule
+from ..base import TopologyBase
+from utils import compute_unique_distances, show_results_ricci
 
 
-class Curvature(TopologyBase):
-    def __init__(self, writer: SummaryWriter = None):
-        super().__init__(self.log if writer is not None else None)
+class Curvature(TopologyModule):
+    DISTANCES = False
 
-    def forward(self, d: torch.Tensor):
-        g = nx.Graph()
-        e = []
-        for i in range(d.shape[0]):
-            for j in range(d.shape[0]):
-                e.append((i, j, d[i][j]))
-        g.add_weighted_edges_from(e)
+    def __init__(self, tag: str = None, parents: list[TopologyBase] = (), writer: SummaryWriter = None, ricci_iter: int = 3):
+        super().__init__(tag=tag or f'', parents=parents, writer=writer)
+        self.ricci_iter = ricci_iter
 
-        # Start a Ricci flow with Lin-Yau's probability distribution setting with 4 process.
-        orf = OllivierRicci(g, alpha=0.5, base=1, exp_power=0, proc=4, verbose="INFO")
+    def forward(self, x: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, distances: bool = DISTANCES):
+        if channel_first:
+            if x.ndim == 3:
+                x = x.transpose(1, 2)
+            else:
+                x = x.transpose(1, 2).transpose(2, 3)
 
-        # Do Ricci flow for 2 iterations
-        orf.compute_ricci_flow(iterations=25)
+        graphs = []
 
-    def log(self):
-        ...
+        for b in range(x.shape[0]):
+            d = compute_unique_distances(x[b]) if not distances else x[b]
+
+            G = nx.Graph()
+
+            e = []
+            s = set()
+            for i in range(d.shape[0]):
+                for j in range(i + 1, d.shape[0]):
+                    e.append((i, j))
+                    s.add(i)
+                    s.add(j)
+            s = list(s)
+            ee = []
+            for i, j in e:
+                ee.append((s.index(i), s.index(j), d[i][j]))
+            G.add_weighted_edges_from(ee)
+
+            # Start a Ricci flow with Lin-Yau's probability distribution setting with 4 process.
+            orc = OllivierRicci(G, alpha=0.5, verbose="TRACE")
+
+            # Do Ricci flow for 2 iterations
+            orc.compute_ricci_flow(iterations=self.ricci_iter)
+
+            orc.compute_ricci_curvature()
+            G_orc = orc.G.copy()
+
+            try:
+                cc = orc.ricci_community()
+                nx.set_node_attributes(G_orc, cc[1], "community")
+            except AssertionError:
+                nx.set_node_attributes(G_orc, 0, "community")
+
+            graphs.append(G_orc)
+        return graphs
+
+    def log(self, args: tuple, kwargs: dict, result: list[nx.Graph], tag: str, writer: SummaryWriter):
+        G = result[0]
+        fig = show_results_ricci(G, 'community')
+        writer.add_figure(kwargs['label'] + '/' + tag, fig)
+
+        return result
