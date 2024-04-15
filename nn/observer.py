@@ -4,13 +4,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from typing import Callable, Union
 
-from .topology import Persistence, IntrinsicDimension, DeltaHyperbolicity
-from .base import TopologyBase
-from .module import TopologyModule
+from .topology import Persistence, Dimension, DeltaHyperbolicity
+from .base import IntrinsicBase
+from .module import IntrinsicModule
 
 
 class _Hook:
-    def __init__(self, f: tuple[Callable], tm: TopologyModule, kwargs: dict):
+    def __init__(self, f: tuple[Callable], tm: IntrinsicModule, kwargs: dict):
         self.f = f
         self.tm = tm
         self.kwargs = kwargs
@@ -24,7 +24,7 @@ class _Hook:
 
 
 class _PreHook:
-    def __init__(self, f: tuple[Callable], tm: TopologyModule, kwargs: dict):
+    def __init__(self, f: tuple[Callable], tm: IntrinsicModule, kwargs: dict):
         self.f = f
         self.tm = tm
         self.kwargs = kwargs
@@ -36,28 +36,25 @@ class _PreHook:
             self.tm(args[0], **self.kwargs)
 
 
-class TopologyObserver(TopologyBase):
+class IntrinsicObserver(IntrinsicBase):
     # Hooks to a network and fires when it is called | Hooks to modules assuming they're in the same network
     def __init__(
-            self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
+            self, net: nn.Module, *, topology_modules: list[IntrinsicModule] = (),
             writer: SummaryWriter = None, find: bool = False,
             pre_topology: list[Union[
-                tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
+                tuple[nn.Module, list[Union[tuple[IntrinsicModule, dict], tuple[IntrinsicModule, dict, Callable]]]]
             ]] = (),
             post_topology: list[Union[
-                tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
+                tuple[nn.Module, list[Union[tuple[IntrinsicModule, dict], tuple[IntrinsicModule, dict, Callable]]]]
             ]] = ()
     ):
         super().__init__(
-            tag=f'Topology Observer {id(net or self)}',
+            tag=f'Intrinsic Observer {id(net or self)}',
             writer=writer,
             topology_children=topology_modules
         )
         self.net = net
-
-        # TODO: figure out if results should be saved into .pt files
-        self.information: list[dict[tuple[int, str], list]] = []
-
+        self.information: list[dict[tuple[int, str], list]] = [] # TODO: figure out if results should be saved into .pt files
         self.registered = set()
 
         for m, tms in post_topology:
@@ -73,16 +70,14 @@ class TopologyObserver(TopologyBase):
         net.register_forward_hook(self.increment)
         for m in topology_modules:
             self.register(m)
-
         if find:
             net.apply(self.register)
 
     def register(self, m: nn.Module):
-        if isinstance(m, TopologyModule) and m is not self.net and id(m) not in self.registered:
+        if isinstance(m, IntrinsicModule) and m is not self.net and id(m) not in self.registered:
             m.register_forward_hook(self.accumulate, with_kwargs=True)
 
             self.topology_children[id(m)] = m
-            m.add_or_skip_log_hook()
             if not m.parents():  # No parents previously, or a high level module, so we connect to it
                 m.add_parent(self)
             self.registered.add(id(m))
@@ -96,7 +91,7 @@ class TopologyObserver(TopologyBase):
     def info(self, m: nn.Module, args: tuple):
         self.information.append({})
 
-    def accumulate(self, m: TopologyModule, args: tuple, kwargs: dict, result):
+    def accumulate(self, m: IntrinsicModule, args: tuple, kwargs: dict, result):
         if id(m) in self.information[-1]:
             self.information[-1][id(m), kwargs['label']].append(result)
         else:
@@ -104,49 +99,39 @@ class TopologyObserver(TopologyBase):
         return result
 
 
-class TopologyTrainingObserver(TopologyObserver):
+class IntrinsicTrainingObserver(IntrinsicObserver):
     def __init__(
-            self, net: nn.Module, *, topology_modules: list[TopologyModule] = (),
+            self, net: nn.Module, *, topology_modules: list[IntrinsicModule] = (),
             writer: SummaryWriter = None,
             pre_topology: list[Union[
-                tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
+                tuple[nn.Module, list[Union[tuple[IntrinsicModule, dict], tuple[IntrinsicModule, dict, Callable]]]]
             ]] = (),
             post_topology: list[Union[
-                tuple[nn.Module, list[Union[tuple[TopologyModule, dict], tuple[TopologyModule, dict, Callable]]]]
+                tuple[nn.Module, list[Union[tuple[IntrinsicModule, dict], tuple[IntrinsicModule, dict, Callable]]]]
             ]] = (),
-            log_every_train: int = 1, log_every_val: int = 1, topology_every: bool = False
+            log_every_train: int = 1, log_every_val: int = 1
     ):
         super().__init__(net, topology_modules=topology_modules, writer=writer, pre_topology=pre_topology, post_topology=post_topology)
 
         self.log_every_train = log_every_train
-        self.topology_every = topology_every
         self.log_every_val = log_every_val
         self.val_step = 0
         self.train_epoch_information: list[dict[tuple[int, str], list]] = []  # information yielded at each step
         self.val_epoch_information: list[dict[tuple[int, str], list]] = []  # information yielded at each step
-
-        for k in self.topology_children:
-            if isinstance(self.topology_children[k], TopologyModule):
-                self.topology_children[k].forward = self.get_forward(self.topology_children[k],
-                                                                     self.topology_children[k].forward)
+        self.training = False
         self.net.register_forward_hook(self.accumulate_epoch)
+        self.net.register_forward_pre_hook(self.set_train)
 
-    def register(self, m: nn.Module):
-        if isinstance(m, TopologyModule):
-            m.register_forward_pre_hook(self.set_logging, with_kwargs=True)
-        super().register(m)
-
-    def accumulate(self, m: TopologyModule, args: tuple, kwargs: dict, result):
+    def accumulate(self, m: IntrinsicModule, args: tuple, kwargs: dict, result):
         if result is None:
             return result
-
-        return TopologyObserver.accumulate(self, m, args, kwargs, result)
+        return IntrinsicObserver.accumulate(self, m, args, kwargs, result)
 
     def accumulate_epoch(self, m: nn.Module, args: tuple, result):
         if not self.information[-1]:
             return result
 
-        if m.training:
+        if self.training:
             self.train_epoch_information.append(self.information[-1])
         else:
             self.val_epoch_information.append(self.information[-1])
@@ -167,24 +152,15 @@ class TopologyTrainingObserver(TopologyObserver):
 
         return result
 
-    def set_logging(self, m: TopologyModule, args: tuple, kwargs: dict):
-        # Done by the latest initialized observer
-        if kwargs.get('logging', True):  # May be set to False in the forward(...) call
-            kwargs['logging'] = (self.step % self.log_every_train if m.training else self.val_step % self.log_every_val) == 0
-        return args, kwargs
+    def set_train(self, m: nn.Module, args):
+        self.training = m.training
 
-    def get_forward(self, m: TopologyModule, f: Callable):
-        def forward(x: torch.Tensor, *, logging: bool = m.LOGGING, **kwargs):
-            if logging:
-                return f(x, logging=logging, **kwargs)
-            else:
-                return None
-
-        return forward
+    def logging(self):
+        return (self.step % self.log_every_train if self.training else self.val_step % self.log_every_val) == 0
 
     def flush(self):
         self.val_step = 0
-        TopologyObserver.flush(self)
+        IntrinsicObserver.flush(self)
 
     def get_tag(self):
         if self.net.training:
@@ -195,24 +171,24 @@ class TopologyTrainingObserver(TopologyObserver):
         return self.tag + tag
 
 
-class AttentionTopologyObserver(TopologyObserver):
+class AttentionTopologyObserver(IntrinsicObserver):
     ...
 
 
-class AttentionTopologyTrainingObserver(TopologyTrainingObserver):
+class AttentionTopologyTrainingObserver(IntrinsicTrainingObserver):
     ...
 
 
-class EmbeddingTopologyTrainingObserver(TopologyTrainingObserver):
+class EmbeddingIntrinsicTrainingObserver(IntrinsicTrainingObserver):
     def __init__(
             self, net: nn.Module, *, embedding_modules: list[nn.Embedding] = (),
             writer: SummaryWriter = None, log_every_train: int = 1, log_every_val: int = 1
     ):
         self.Filtration = Persistence()
-        self.Dimension = IntrinsicDimension()
+        self.Dimension = Dimension()
         self.DeltaHyperbolicity = DeltaHyperbolicity()
 
-        TopologyTrainingObserver.__init__(
+        IntrinsicTrainingObserver.__init__(
             self, net, topology_modules=[self.Filtration, self.Dimension, self.DeltaHyperbolicity],
             writer=writer, log_every_train=log_every_train, log_every_val=log_every_val
         )

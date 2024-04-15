@@ -4,16 +4,16 @@ from torch.utils.tensorboard import SummaryWriter
 
 from functools import partial
 
-from .base import TopologyBase
-from .module import TopologyModule
-from .topology import Persistence, IntrinsicDimension, Entropy, DeltaHyperbolicity
+from .base import IntrinsicBase
+from .module import IntrinsicModule
+from .topology import Persistence, Dimension, Entropy, DeltaHyperbolicity
 
 
-class TopologyMixin(TopologyBase):
+class IntrinsicMixin(IntrinsicBase):
     def __init__(self, tag: str = None, writer: SummaryWriter = None):
-        super().__init__(tag=tag or f'Topology Module: {id(self)}', writer=writer)
+        super().__init__(tag=tag or f'Intrinsic Module: {id(self)}', writer=writer)
         self.Filtration = Persistence()
-        self.Dimension = IntrinsicDimension()
+        self.Dimension = Dimension()
         self.Entropy = Entropy()
         self.DeltaHyperbolicity = DeltaHyperbolicity()
 
@@ -23,20 +23,19 @@ class TopologyMixin(TopologyBase):
         self.register_forward_hook(self.increment)
 
     def register(self, m: nn.Module):
-        if isinstance(m, TopologyModule) and m is not self:
+        if isinstance(m, IntrinsicModule) and m is not self:
             self.topology_children[id(m)] = m
-            m.add_or_skip_log_hook()
             m.add_parent(self)
 
     @staticmethod
-    def increment(self: 'TopologyMixin', args: tuple, result):
+    def increment(self: 'IntrinsicMixin', args: tuple, result):
         self.step += 1
         for k in self.topology_children:
             self.topology_children[k].flush()
         return result
 
 
-class AttentionMixin(TopologyMixin):
+class AttentionMixin(IntrinsicMixin):
     def __init__(self, tag: str = None, writer: SummaryWriter = None, display_heads: bool = True):
         super().__init__(tag=tag, writer=writer)
         self.display_heads = display_heads

@@ -8,6 +8,7 @@ from scipy.sparse import csr_matrix
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 from utils.math import unique_points
 
@@ -28,7 +29,7 @@ def _capacity_alg(d: np.array, R: float, m):
     return len(c)
 
 
-def capacity(X: np.array):
+def capacity(X: np.array):  # FIXME
     X = np.unique(X, axis=-2)
     d = pdist(X, metric='euclidean')
     d.sort()
@@ -69,7 +70,7 @@ def _information_alg(d: np.array, R: float, m):
     return a + np.ones_like(a), b
 
 
-def information(X: np.array):
+def information(X: np.array):  # FIXME
     X = np.unique(X, axis=-2)
     d = pdist(X, metric='euclidean')
     R = shortest_path(csr_matrix(distance_matrix(X, X))).max(axis=-1)
@@ -101,9 +102,9 @@ def mm(X: np.array, k: int = 5):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
-    w = distances[:, -1]
-    m1 = distances.mean(axis=1)
-    return -m1 / (m1 - w)
+    Tk = distances[:, -1]
+    T = distances.mean(axis=1)
+    return (T / (Tk - T)).mean()
 
 
 def ols(X: np.array, k: int = 5):
@@ -111,13 +112,13 @@ def ols(X: np.array, k: int = 5):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
-    y = np.zeros(distances)
+    y = np.zeros_like(distances)
     for i in range(k):
         y[:, i] = distances[:, i] * (distances == distances[:, i].reshape(-1, 1)).sum(axis=-1) / (i + 1)
 
     d = np.zeros(X.shape[0])
     for i in range(X.shape[0]):
-        lr = LinearRegression(fit_intercept=False).fit(distances[i], y[i])
+        lr = LinearRegression(fit_intercept=False).fit(distances[i].reshape(-1, 1), y[i].reshape(-1, 1))
         d[i] = lr.coef_[0, 0]
 
     return d.mean()
@@ -125,16 +126,22 @@ def ols(X: np.array, k: int = 5):
 
 def pca(X: np.array, explained_variance: float = 0.95):
     X = unique_points(X)
-    pca = PCA(n_components=explained_variance)
-    pca.fit(X)
-
-    return pca.n_components_
+    return PCA(n_components=explained_variance).fit(X).n_components_
 
 
-def local_pca(X: np.array):
-    pca = PCA().fit(X)
-    explained_var = pca.explained_variance_
-    return np.sum(explained_var > np.mean(explained_var))
+def cluster_pca(X: np.array, k: int = 5, explained_variance: float = 0.95):
+    X = unique_points(X)
+    labels = KMeans(n_clusters=int(X.shape[0] / k)).fit(X)
+    return np.mean([
+        PCA(n_components=explained_variance).fit(X[labels == l]).n_components_ for l in range(int(X.shape[0] / k))
+    ])
+
+
+def local_pca(X: np.array, k: int = 5, explained_variance: float = 0.95):
+    X = unique_points(X)
+    nn = NearestNeighbors(n_neighbors=k).fit(X)
+    _, ix = nn.kneighbors()
+    return np.mean([pca(X[ix[i]], explained_variance) for i in range(X.shape[0])])
 
 
 def two_nn(X: np.array):
@@ -147,4 +154,4 @@ def two_nn(X: np.array):
     mu = np.sort(distances[:, 1] / distances[:, 0])
     cdf = np.linspace(0, 1 - 1/n, n)
     lr = LinearRegression(fit_intercept=False)
-    return lr.fit(np.log(mu), -np.log(1 - cdf)).coef_[0, 0]
+    return lr.fit(np.log(mu).reshape(-1, 1), -np.log(1 - cdf).reshape(-1, 1)).coef_[0, 0]

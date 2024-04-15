@@ -5,19 +5,20 @@ from GraphRicciCurvature.FormanRicci import FormanRicci
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from ..module import TopologyModule
-from ..base import TopologyBase
-from utils import compute_unique_distances, show_results_ricci
+from ..module import IntrinsicModule
+from ..base import IntrinsicBase
+from utils.math import compute_unique_distances
+from utils.tensorboard import show_results_ricci
 
 
-class Curvature(TopologyModule):
+class Curvature(IntrinsicModule):
     DISTANCES = False
 
-    def __init__(self, tag: str = None, parents: list[TopologyBase] = (), writer: SummaryWriter = None, ricci_iter: int = 3):
+    def __init__(self, tag: str = None, parents: list[IntrinsicBase] = (), writer: SummaryWriter = None, ricci_iter: int = 3):
         super().__init__(tag=tag or f'', parents=parents, writer=writer)
         self.ricci_iter = ricci_iter
 
-    def forward(self, x: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, distances: bool = DISTANCES):
+    def _forward(self, x: torch.Tensor, *, label: str = IntrinsicModule.LABEL, logging: bool = IntrinsicModule.LOGGING, channel_first: bool = IntrinsicModule.CF, distances: bool = DISTANCES):
         if channel_first:
             if x.ndim == 3:
                 x = x.transpose(1, 2)

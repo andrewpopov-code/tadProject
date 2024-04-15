@@ -3,8 +3,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dataclasses import dataclass
 
-from ..base import TopologyBase
-from ..module import TopologyModule
+from ..base import IntrinsicBase
+from ..module import IntrinsicModule
 from ..functional.dimension import *
 from utils.math import compute_unique_distances
 
@@ -12,7 +12,7 @@ from utils.math import compute_unique_distances
 @dataclass
 class DimensionInformation:
     capacity: torch.Tensor
-    information: torch.Tensor
+    # information: torch.Tensor
     corr: torch.Tensor
     pca: torch.Tensor
     local_pca: torch.Tensor
@@ -22,16 +22,15 @@ class DimensionInformation:
     mle: torch.Tensor
 
 
-class IntrinsicDimension(TopologyModule):
-    # TODO: integrate estimators from functional
+class Dimension(IntrinsicModule):
     DISTANCES = False
 
-    def __init__(self, tag: str = None, parents: [TopologyBase] = (), writer: SummaryWriter = None):
+    def __init__(self, tag: str = None, parents: [IntrinsicBase] = (), writer: SummaryWriter = None):
         super().__init__(tag=tag or f'ID Profile {id(self)}', parents=parents, writer=writer)
 
         self.estimators = [
             capacity,
-            information,
+            # information,
             corr,
             pca,
             local_pca,
@@ -41,7 +40,7 @@ class IntrinsicDimension(TopologyModule):
             mle
         ]
 
-    def forward(self, x: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, distances: bool = DISTANCES):
+    def _forward(self, x: torch.Tensor, *, label: str = IntrinsicModule.LABEL, logging: bool = IntrinsicModule.LOGGING, channel_first: bool = IntrinsicModule.CF, distances: bool = DISTANCES):
         if channel_first:
             if x.ndim == 3:
                 x = x.transpose(1, 2)

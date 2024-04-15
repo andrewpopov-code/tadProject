@@ -8,34 +8,43 @@ def diagrams(X: np.array, maxdim: int = 1):
     return ripser(X, maxdim=maxdim, distance_matrix=True)['dgms']
 
 
-def betti(diagrams, n_bins: int = 100):
-    maxdim = len(diagrams)
-    diagrams = [
-        diagrams[dim][diagrams[dim] != np.inf] for dim in range(maxdim)
-    ]
-    global_min = min(diagrams[dim].min() for dim in range(maxdim))
-    global_max = max(diagrams[dim].max() for dim in range(maxdim))
+def drop_inf(diag):
+    for dim in range(len(diag)):
+        mask = np.ma.fix_invalid(diag[dim]).mask
+        if mask.shape:
+            diag[dim] = diag[dim][~mask.any(axis=1)]
+    return diag
+
+
+def betti(diag, n_bins: int = 100):
+    diag = drop_inf(diag)
+    global_min = min(diag[dim].min() if diag[dim].size else 0 for dim in range(len(diag)))
+    global_max = max(diag[dim].max() if diag[dim].size else 0 for dim in range(len(diag)))
     steps = np.linspace(global_min, global_max, num=n_bins, endpoint=True)
     bc = [
-        (diagrams[dim] < steps.reshape(-1, 1)).sum(axis=1) for dim in range(maxdim)
+        ((diag[0][:, 0] <= steps.reshape(-1, 1)) & (diag[0][:, 1] > steps.reshape(-1, 1))).sum(axis=1) if diag[dim].size else np.zeros_like(steps) for dim in range(len(diag))
     ]
 
-    return bc
+    return np.array(bc)
 
 
-def persistence_entropy(diagrams):
-    L = persistence_metric(diagrams)
-    prob = [(diagrams[dim][:, 1] - diagrams[dim][:, 0]) / L[dim] for dim in range(len(diagrams))]
-    return np.array([entropy(prob[dim], np.log) for dim in range(len(diagrams))])
+def persistence_entropy(diag):
+    diag = drop_inf(diag)
+    L = persistence_norm(diag)
+    prob = [(diag[dim][:, 1] - diag[dim][:, 0]) / L[dim] if diag[dim].size else None for dim in range(len(diag))]
+    return np.array([entropy(prob[dim], np.log) if prob[dim] is not None else 0 for dim in range(len(diag))])
 
 
-def persistence_metric(diagrams):
-    z = np.zeros(len(diagrams))
-    for dim in range(len(diagrams)):
-        for end, start in diagrams[dim]:
+def persistence_norm(diag):
+    diag = drop_inf(diag)
+    z = np.zeros(len(diag))
+    for dim in range(len(diag)):
+        for start, end in diag[dim]:
             z[dim] += end - start
     return z
 
 
 def pairwise_dist(bc: np.array):
-    return distance_matrix(bc, bc)
+    return [
+        distance_matrix(bc[:, dim], bc[:, dim]) for dim in range(len(bc[0]))
+    ]

@@ -1,1 +1,1 @@
-from entropy import entropy
+from .entropy import entropy

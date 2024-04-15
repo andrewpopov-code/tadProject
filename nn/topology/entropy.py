@@ -1,17 +1,17 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from ..base import TopologyBase
-from ..module import TopologyModule
+from ..base import IntrinsicBase
+from ..module import IntrinsicModule
 from ..functional import entropy as f_entropy
 
 
-class Entropy(TopologyModule):
-    def __init__(self, tag: str = None, parents: [TopologyBase] = (), writer: SummaryWriter = None, base: str = 'nat'):
+class Entropy(IntrinsicModule):
+    def __init__(self, tag: str = None, parents: [IntrinsicBase] = (), writer: SummaryWriter = None, base: str = 'nat'):
         super().__init__(tag=tag or f'Entropy Profile {id(self)}', parents=parents, writer=writer)
         self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
 
-    def forward(self, prob: torch.Tensor, *, label: str = TopologyModule.LABEL, logging: bool = TopologyModule.LOGGING, channel_first: bool = TopologyModule.CF, vectors: bool = True):
+    def _forward(self, prob: torch.Tensor, *, label: str = IntrinsicModule.LABEL, logging: bool = IntrinsicModule.LOGGING, channel_first: bool = IntrinsicModule.CF, vectors: bool = True):
         if not channel_first:  # TODO: fix vectors or one channel squeezed tensors
             if prob.ndim == 3:
                 prob = prob.transpose(1, 2)

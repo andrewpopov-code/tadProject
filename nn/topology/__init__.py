@@ -2,4 +2,4 @@
 from .homology import Persistence
 from .entropy import Entropy
 from .hyperbolic import DeltaHyperbolicity
-from .dimension import IntrinsicDimension
+from .dimension import Dimension

@@ -1,2 +1,2 @@
-from .observer import TopologyObserver, TopologyTrainingObserver, EmbeddingTopologyTrainingObserver
-from .mixin import TopologyMixin, AttentionMixin
+from .observer import IntrinsicObserver, IntrinsicTrainingObserver, EmbeddingIntrinsicTrainingObserver
+from .mixin import IntrinsicMixin, AttentionMixin

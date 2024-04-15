@@ -1,38 +1,43 @@
 from torch.utils.tensorboard import SummaryWriter
 
 
-class ParentContainer:
-    def __init__(self, parent: ['TopologyBase', None]):
+class _ParentContainer:
+    def __init__(self, parent: ['IntrinsicBase', None]):
         self.obj = parent
 
 
-class TopologyBase:
-    def __init__(self, tag: str = '', parents: list['TopologyBase'] = (), writer: SummaryWriter = None, topology_children: list['TopologyBase'] = ()):
+class IntrinsicBase:
+    def __init__(self, tag: str = '', parents: list['IntrinsicBase'] = (), writer: SummaryWriter = None,
+                 topology_children: list['IntrinsicBase'] = ()):
         self.step = 0
         self.tag = tag
         self.writer = writer
-        self._parents = [ParentContainer(p) for p in parents]
-        self.topology_children: dict[int, 'TopologyBase'] = {id(x): x for x in topology_children}
+        self._parents = [_ParentContainer(p) for p in parents]
+        self.topology_children: dict[int, 'IntrinsicBase'] = {id(x): x for x in topology_children}
 
-    def parents(self) -> list['TopologyBase']:
+    def parents(self) -> list['IntrinsicBase']:
         return [p.obj for p in self._parents]
 
     def parents_iter(self):
         for p in self._parents:
             yield p.obj
 
-    def add_parent(self, parent: 'TopologyBase'):
-        self._parents.append(ParentContainer(parent))
+    def add_parent(self, parent: 'IntrinsicBase'):
+        self._parents.append(_ParentContainer(parent))
 
     def get_tags(self):
-        # Idea: get writers and tags from parents and extend them with ours; returns variants x writers x tags
+        # Idea: get writers and tags from parents and extend them with ours; returns variants x writers x tags x logging
         tags = [
-            [ws | {self.writer} if self.writer is not None else ws, ts + [self.get_tag()]] for p in self.parents_iter() for ws, ts in p.get_tags()
+            [ws | {self.writer} if self.writer is not None else ws, ts + [self.get_tag()], logging and self.logging()] for p in self.parents_iter()
+            for ws, ts, logging in p.get_tags()
         ]
-        return tags or [[{self.writer} if self.writer is not None else set(), [self.get_tag()]]]
+        return tags or [[{self.writer} if self.writer is not None else set(), [self.get_tag()], self.logging()]]
 
     def get_tag(self):
         return self.tag + f' (Call {self.step})'
+
+    def logging(self):
+        return True
 
     def flush(self):
         self.step = 0
