@@ -35,8 +35,7 @@ class DeltaHyperbolicity(IntrinsicModule):
         return delta
 
     def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
-        delta = delta[0]
-        writer.add_scalar('/'.join((kwargs['label'], tag)), delta, self.step)
+        writer.add_scalar('/'.join((kwargs['label'], tag)), delta.mean(), self.step)
 
         return delta
 

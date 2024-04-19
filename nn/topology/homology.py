@@ -8,7 +8,7 @@ from utils.math import compute_unique_distances
 from utils.tensorboard import draw_heatmap, plot_persistence
 from ..base import IntrinsicBase
 from ..module import IntrinsicModule
-from ..functional.homology import diagrams, betti, persistence_norm, persistence_entropy, pairwise_dist
+from ..functional.homology import diagrams, betti, persistence_norm, persistence_entropy, pairwise_dist, divergence
 
 
 @dataclass
@@ -17,6 +17,7 @@ class PersistenceInformation:
     betti: np.array
     entropy: np.array
     persistence: np.array
+    sample: np.array
 
 
 class Persistence(IntrinsicModule):
@@ -43,11 +44,21 @@ class Persistence(IntrinsicModule):
             pe.append(persistence_entropy(pi[-1]))
             persistence.append(persistence_norm(pi[-1]))
 
-        self.diagrams.append(PersistenceInformation(diagram=pi, betti=bc, entropy=pe, persistence=persistence))
+        self.diagrams.append(PersistenceInformation(diagram=pi, betti=bc, entropy=pe, persistence=persistence, sample=x.detach().numpy()))
         return self.diagrams[-1]
 
     def heatmap(self):
         return pairwise_dist(np.array([dgrm.betti[0] for dgrm in self.diagrams]))
+
+    def mtd(self):
+        d = np.zeros((len(self.diagrams), len(self.diagrams), self.maxdim + 1))
+        for i in range(len(self.diagrams)):
+            for j in range(len(self.diagrams)):
+                l = self.diagrams[i].sample.shape[0]
+                d[i][j] = np.mean([
+                    divergence(self.diagrams[i].sample[k], self.diagrams[j].sample[k]) for k in range(l)
+                ], axis=0)
+        return d
 
     def log(self, args: tuple, kwargs: dict, result: PersistenceInformation, tag: str, writer: SummaryWriter):
         pi, bc, entropy, persistence = result.diagram[0], result.betti[0], result.entropy[0], result.persistence[0]
@@ -80,6 +91,7 @@ class Persistence(IntrinsicModule):
     def flush(self):
         if self.diagrams:
             maps = self.heatmap()
+            div = self.mtd().T
 
             tags = self.get_tags()
             for ws, ts, logging in tags:
@@ -87,8 +99,14 @@ class Persistence(IntrinsicModule):
                     for w in ws:
                         for dim in range(len(maps)):
                             w.add_figure(
-                                '/'.join(['RTD'] + ts),
+                                '/'.join(['Betti Distance'] + ts),
                                 draw_heatmap(torch.tensor(maps[dim])),
+                                dim
+                            )
+
+                            w.add_figure(
+                                '/'.join(['Manifold Topology Divergence'] + ts),
+                                draw_heatmap(torch.tensor(div[dim])),
                                 dim
                             )
         self.diagrams = []

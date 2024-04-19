@@ -66,7 +66,7 @@ class Dimension(IntrinsicModule):
         writer.add_scalars(
             '/'.join((kwargs['label'] + ' (ID Estimate)', tag)),
             {
-                est.__name__: getattr(result, est.__name__)[0] for est in self.estimators
+                est.__name__: getattr(result, est.__name__).mean() for est in self.estimators
             },
             self.step
         )

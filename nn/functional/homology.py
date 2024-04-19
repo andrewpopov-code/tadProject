@@ -2,6 +2,7 @@ import numpy as np
 from ripser import ripser
 from scipy.spatial import distance_matrix
 from .entropy import entropy
+from utils.math import unique_points
 
 
 def diagrams(X: np.array, maxdim: int = 1):
@@ -48,3 +49,20 @@ def pairwise_dist(bc: np.array):
     return [
         distance_matrix(bc[:, dim], bc[:, dim]) for dim in range(len(bc[0]))
     ]
+
+
+def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
+    X = unique_points(X)
+    Y = unique_points(Y)
+    XX = distance_matrix(X, X)
+    XY = distance_matrix(X, Y)
+    YY = distance_matrix(Y, Y)
+    M = np.block([
+        [XX, XY],
+        [XY.T, YY]
+    ])
+    return diagrams(M, maxdim)
+
+
+def divergence(X: np.array, Y: np.array, maxdim: int = 1):
+    return persistence_norm(cross_barcode(X, Y, maxdim))
