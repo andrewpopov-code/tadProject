@@ -1,15 +1,15 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from ..base import IntrinsicBase
-from ..module import IntrinsicModule
-from ..functional import entropy as f_entropy
+from .base import IntrinsicBase
+from .module import IntrinsicModule
+from estimators.entropy import EntropyEstimator
 
 
 class Entropy(IntrinsicModule):
     def __init__(self, tag: str = None, parents: [IntrinsicBase] = (), writer: SummaryWriter = None, base: str = 'nat'):
         super().__init__(tag=tag or f'Entropy Profile {id(self)}', parents=parents, writer=writer)
-        self.logarithm = torch.log if base == 'nat' else torch.log2 if base == 'bits' else torch.log10
+        self.est = EntropyEstimator(base=base)
 
     def _forward(self, prob: torch.Tensor, *, label: str = IntrinsicModule.LABEL, logging: bool = IntrinsicModule.LOGGING, channel_first: bool = IntrinsicModule.CF, vectors: bool = True):
         if not channel_first:  # TODO: fix vectors or one channel squeezed tensors
@@ -17,7 +17,7 @@ class Entropy(IntrinsicModule):
                 prob = prob.transpose(1, 2)
             else:
                 prob = prob.transpose(1, 2).transpose(2, 3)
-        return self.entropy(prob)
+        return self.est.fit_transform(prob)
 
     def get_tag(self):
         return self.tag
@@ -63,6 +63,3 @@ class Entropy(IntrinsicModule):
         )
 
         return entropy
-
-    def entropy(self, prob: torch.Tensor):
-        return torch.tensor(f_entropy(prob.detach().numpy(), self.logarithm))

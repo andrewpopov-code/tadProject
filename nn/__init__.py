@@ -1,2 +1,1 @@
-from .observer import IntrinsicObserver, IntrinsicTrainingObserver, EmbeddingIntrinsicTrainingObserver
-from .mixin import IntrinsicMixin, AttentionMixin
+from nn.modules.mixin import IntrinsicMixin, AttentionMixin

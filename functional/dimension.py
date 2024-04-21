@@ -18,7 +18,7 @@ def _dist(i, j, d, m):
     return d[m * i + j - ((i + 2) * (i + 1)) // 2]
 
 
-def _capacity_alg(d: np.array, R: float, m):
+def _capacity_alg(d: np.ndarray, R: float, m):
     c = []
     ok = True
     for i in range(m):
@@ -29,8 +29,7 @@ def _capacity_alg(d: np.array, R: float, m):
     return len(c)
 
 
-def capacity(X: np.array):  # FIXME
-    X = np.unique(X, axis=-2)
+def capacity(X: np.ndarray):  # FIXME
     d = pdist(X, metric='euclidean')
     d.sort()
     m = np.zeros_like(d)
@@ -41,9 +40,8 @@ def capacity(X: np.array):  # FIXME
     return lr.coef_[0, 0]
 
 
-def corr(X: np.array):
+def corr(X: np.ndarray):
     # X \in M(n, d)
-    X = np.unique(X, axis=-2)
     d = pdist(X, metric='euclidean')
     d.sort()
     c = np.zeros_like(d)
@@ -55,7 +53,7 @@ def corr(X: np.array):
     return lr.coef_[0, 0]
 
 
-def _information_alg(d: np.array, R: float, m):
+def _information_alg(d: np.ndarray, R: float, m):
     # B_i(r) = # {j | d(i, j) < r}
     a = np.zeros(m)
     b = np.zeros(m)
@@ -70,8 +68,7 @@ def _information_alg(d: np.array, R: float, m):
     return a + np.ones_like(a), b
 
 
-def information(X: np.array):  # FIXME
-    X = np.unique(X, axis=-2)
+def information(X: np.ndarray):  # FIXME
     d = pdist(X, metric='euclidean')
     R = shortest_path(csr_matrix(distance_matrix(X, X))).max(axis=-1)
     S = np.ceil(np.repeat(R.reshape(1, -1), d.size, axis=0).T / np.repeat(d.reshape(1, -1), X.shape[0], axis=0)).astype(int)
@@ -89,26 +86,24 @@ def information(X: np.array):  # FIXME
             pass
 
 
-def mle(X: np.array, k: int = 5):
-    X = unique_points(X)
+def mle(X: np.ndarray, k: int = 5):
+    from skdim.id import MLE
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
-    return 1 / (np.log(np.expand_dims(distances[:, -1], 1) / distances).sum(axis=-1) / (k - 1)).mean()
+    return (k - 1) / np.log(np.expand_dims(distances[:, -1], 1) / distances).sum(axis=-1)
 
 
-def mm(X: np.array, k: int = 5):
-    X = unique_points(X)
+def mm(X: np.ndarray, k: int = 5):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
     Tk = distances[:, -1]
     T = distances.mean(axis=1)
-    return (T / (Tk - T)).mean()
+    return T / (Tk - T)
 
 
-def ols(X: np.array, k: int = 5):
-    X = unique_points(X)
+def ols(X: np.ndarray, k: int = 5, slope_estimator=LinearRegression):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
@@ -118,34 +113,30 @@ def ols(X: np.array, k: int = 5):
 
     d = np.zeros(X.shape[0])
     for i in range(X.shape[0]):
-        lr = LinearRegression(fit_intercept=False).fit(distances[i].reshape(-1, 1), y[i].reshape(-1, 1))
+        lr = slope_estimator(fit_intercept=False).fit(distances[i].reshape(-1, 1), y[i].reshape(-1, 1))
         d[i] = lr.coef_[0, 0]
 
-    return d.mean()
+    return d
 
 
-def pca(X: np.array, explained_variance: float = 0.95):
-    X = unique_points(X)
+def pca(X: np.ndarray, explained_variance: float = 0.95):
     return PCA(n_components=explained_variance).fit(X).n_components_
 
 
-def cluster_pca(X: np.array, k: int = 5, explained_variance: float = 0.95):
-    X = unique_points(X)
+def cluster_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):
     labels = KMeans(n_clusters=int(X.shape[0] / k)).fit(X)
-    return np.mean([
+    return np.array([
         PCA(n_components=explained_variance).fit(X[labels == l]).n_components_ for l in range(int(X.shape[0] / k))
     ])
 
 
-def local_pca(X: np.array, k: int = 5, explained_variance: float = 0.95):
-    X = unique_points(X)
+def local_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     _, ix = nn.kneighbors()
-    return np.mean([pca(X[ix[i]], explained_variance) for i in range(X.shape[0])])
+    return np.array([pca(X[ix[i]], explained_variance) for i in range(X.shape[0])])
 
 
-def two_nn(X: np.array):
-    X = unique_points(X)
+def two_nn(X: np.ndarray):
     n = X.shape[0]
 
     nn = NearestNeighbors(n_neighbors=2).fit(X)

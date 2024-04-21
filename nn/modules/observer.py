@@ -1,12 +1,12 @@
-import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 from typing import Callable, Union
+import os
 
 from .topology import Persistence, Dimension, DeltaHyperbolicity
 from .base import IntrinsicBase
-from .module import IntrinsicModule
+from nn.modules.module import IntrinsicModule
 
 
 class _Hook:
@@ -54,7 +54,7 @@ class IntrinsicObserver(IntrinsicBase):
             topology_children=topology_modules
         )
         self.net = net
-        self.information: list[dict[tuple[int, str], list]] = [] # TODO: figure out if results should be saved into .pt files
+        self.forward_information: list[dict[tuple[int, str], list]] = [] # TODO: figure out if results should be saved into .pt files
         self.registered = set()
 
         for m, tms in post_topology:
@@ -89,13 +89,13 @@ class IntrinsicObserver(IntrinsicBase):
         return result
 
     def info(self, m: nn.Module, args: tuple):
-        self.information.append({})
+        self.forward_information.append({})
 
     def accumulate(self, m: IntrinsicModule, args: tuple, kwargs: dict, result):
-        if id(m) in self.information[-1]:
-            self.information[-1][id(m), kwargs['label']].append(result)
+        if id(m) in self.forward_information[-1]:
+            self.forward_information[-1][id(m), kwargs['label']].append(result)
         else:
-            self.information[-1][id(m), kwargs['label']] = [result]
+            self.forward_information[-1][id(m), kwargs['label']] = [result]
         return result
 
 
@@ -128,17 +128,17 @@ class IntrinsicTrainingObserver(IntrinsicObserver):
         return IntrinsicObserver.accumulate(self, m, args, kwargs, result)
 
     def accumulate_epoch(self, m: nn.Module, args: tuple, result):
-        if not self.information[-1]:
+        if not self.forward_information[-1]:
             return result
 
         if self.training:
-            self.train_epoch_information.append(self.information[-1])
+            self.train_epoch_information.append(self.forward_information[-1])
         else:
-            self.val_epoch_information.append(self.information[-1])
+            self.val_epoch_information.append(self.forward_information[-1])
         return result
 
     def info(self, m: nn.Module, args: tuple):
-        self.information = [{}]
+        self.forward_information = [{}]
 
     def increment(self, m: nn.Module, args: tuple, result):
         if m.training:
@@ -169,6 +169,21 @@ class IntrinsicTrainingObserver(IntrinsicObserver):
             tag = f' (Validation Call {self.step - 1} + {self.val_step})'
 
         return self.tag + tag
+
+    def report(self):
+        d_train = os.path.join(self.writer.log_dir, self.tag + f': training report #{self.step}')
+        train_writer = SummaryWriter(log_dir=d_train)
+        d_val = os.path.join(self.writer.log_dir, self.tag + f': validation report #{self.val_step}')
+        val_writer = SummaryWriter(log_dir=d_val)
+
+        for epoch, inf in enumerate(self.train_epoch_information):
+            for (module_id, label), results in inf.items():
+                if isinstance(self.topology_children[module_id], IntrinsicModule):
+                    self.topology_children[module_id].log_epoch(epoch * self.log_every_train, label, results, train_writer)
+        for epoch, inf in enumerate(self.val_epoch_information):
+            for (module_id, label), results in inf.items():
+                if isinstance(self.topology_children[module_id], IntrinsicModule):
+                    self.topology_children[module_id].log_epoch(epoch * self.log_every_val, label, results, val_writer)
 
 
 class AttentionTopologyObserver(IntrinsicObserver):

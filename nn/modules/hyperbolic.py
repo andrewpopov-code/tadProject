@@ -1,10 +1,10 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
-import numpy as np
 
-from nn.base import IntrinsicBase
-from nn.module import IntrinsicModule
-from utils.math import compute_unique_distances
+from .base import IntrinsicBase
+from .module import IntrinsicModule
+from utils.math import image_to_cloud, compute_unique_distances
+from functional.delta import delta_hyperbolicity
 
 
 class DeltaHyperbolicity(IntrinsicModule):
@@ -20,19 +20,12 @@ class DeltaHyperbolicity(IntrinsicModule):
             else:
                 x = x.transpose(1, 2).transpose(2, 3)
 
-        delta = np.zeros(x.shape[0])
+        delta = torch.zeros(x.shape[0])
         for b in range(x.shape[0]):
-            d = (compute_unique_distances(x[b]) if not distances else x[b]).detach().numpy()
-            p = 0
-            row = d[p, :][np.newaxis, :]
-            col = d[:, p][:, np.newaxis]
-            XY_p = 0.5 * (row + col - d)
-            maxmin = np.max(np.minimum(XY_p[:, :, None], XY_p[None, :, :]), axis=1)
+            d = x[b].detach().numpy() if distances else compute_unique_distances(image_to_cloud(x[b].detach().numpy()))
+            delta[b] = delta_hyperbolicity(d)
 
-            delta[b] = np.max(maxmin - XY_p)
-        delta = torch.tensor(delta)
-
-        return delta
+        return torch.tensor(delta)
 
     def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
         writer.add_scalar('/'.join((kwargs['label'], tag)), delta.mean(), self.step)

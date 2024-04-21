@@ -1,11 +1,10 @@
 import networkx as nx
 from GraphRicciCurvature.OllivierRicci import OllivierRicci
-from GraphRicciCurvature.FormanRicci import FormanRicci
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from ..module import IntrinsicModule
+from nn.modules.module import IntrinsicModule
 from ..base import IntrinsicBase
 from utils.math import compute_unique_distances
 from utils.tensorboard import show_results_ricci

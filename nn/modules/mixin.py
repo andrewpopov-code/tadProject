@@ -6,7 +6,10 @@ from functools import partial
 
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from .topology import Persistence, Dimension, Entropy, DeltaHyperbolicity
+from .homology import Persistence
+from .dimension import Dimension
+from .entropy import Entropy
+from .hyperbolic import DeltaHyperbolicity
 
 
 class IntrinsicMixin(IntrinsicBase):
