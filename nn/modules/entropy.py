@@ -17,7 +17,7 @@ class Entropy(IntrinsicModule):
                 prob = prob.transpose(1, 2)
             else:
                 prob = prob.transpose(1, 2).transpose(2, 3)
-        return self.est.fit_transform(prob)
+        return self.est.fit_transform(prob.numpy(force=True))
 
     def get_tag(self):
         return self.tag

@@ -2,7 +2,7 @@ import numpy as np
 from gph import ripser_parallel
 from scipy.spatial import distance_matrix
 from .entropy import entropy
-from utils.math import unique_points
+from utils.math import unique_points, inf_mask
 
 
 def diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool = False):
@@ -12,9 +12,9 @@ def diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool =
     return ret['dgms'], ret['gens']
 
 
-def drop_inf(diag):
+def drop_inf(diag: list[np.ndarray]) -> list[np.ndarray]:
     for dim in range(len(diag)):
-        mask = np.ma.fix_invalid(diag[dim]).mask
+        mask = inf_mask(diag[dim])
         if mask.shape:
             diag[dim] = diag[dim][~mask.any(axis=1)]
     return diag
@@ -39,13 +39,27 @@ def persistence_entropy(diag):
     return np.array([entropy(prob[dim], np.log) if prob[dim] is not None else 0 for dim in range(len(diag))])
 
 
-def persistence_norm(diag):
+def persistence_norm(diag: list[np.ndarray]) -> np.ndarray:
     diag = drop_inf(diag)
     z = np.zeros(len(diag))
     for dim in range(len(diag)):
         for start, end in diag[dim]:
             z[dim] += end - start
     return z
+
+
+def total_persistence(diag: list[np.ndarray], q: float) -> float:
+    diag = drop_inf(diag)
+    z = np.zeros(len(diag))
+    for dim in range(len(diag)):
+        for start, end in diag[dim]:
+            z[dim] += np.power(end - start, q)
+    return z.sum()
+
+
+def ls_moment(diag: list[np.ndarray]):
+    z = persistence_norm(diag)
+    return np.sum(z[::2] - z[1::2])
 
 
 def pairwise_dist(bc: np.array):

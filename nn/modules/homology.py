@@ -38,14 +38,14 @@ class Persistence(IntrinsicModule):
         pi, bc, pe, norm = [], [], [], []
         for b in range(x.shape[0]):
             if distances:
-                pi.append(diagrams(x[b].detach().numpy(), maxdim=self.maxdim, distances=True))
+                pi.append(diagrams(x[b].numpy(force=True), maxdim=self.maxdim, distances=True))
             else:
-                pi.append(diagrams(unique_points(x[b].detach().numpy()), maxdim=self.maxdim, distances=False))
+                pi.append(diagrams(unique_points(x[b].numpy(force=True)), maxdim=self.maxdim, distances=False))
             bc.append(betti(pi[-1]))
             pe.append(persistence_entropy(pi[-1]))
             norm.append(persistence_norm(pi[-1]))
 
-        self.diagrams.append(PersistenceInformation(diagrams=pi, betti=np.array(bc), entropy=np.array(pe), norm=np.array(norm), sample=x.detach().numpy()))
+        self.diagrams.append(PersistenceInformation(diagrams=pi, betti=np.array(bc), entropy=np.array(pe), norm=np.array(norm), sample=x.numpy(force=True)))
         return self.diagrams[-1]
 
     @staticmethod

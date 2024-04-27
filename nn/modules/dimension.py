@@ -28,10 +28,10 @@ class Dimension(IntrinsicModule):
         dim = torch.zeros(x.shape[0])
         if x.ndim == 3:
             for b in range(x.shape[0]):
-                dim[b] = self.estimator.fit_transform(unique_points(x[b].detach().numpy()))
+                dim[b] = self.estimator.fit_transform(unique_points(x[b].numpy(force=True)))
         else:
             for b in range(x.shape[0]):
-                dim[b] = self.estimator.fit_transform(unique_points(image_to_cloud(x[b].detach().numpy())))
+                dim[b] = self.estimator.fit_transform(unique_points(image_to_cloud(x[b].numpy(force=True))))
         return dim
 
     def get_tag(self):

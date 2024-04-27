@@ -22,10 +22,10 @@ class Magnitude(IntrinsicModule):
 
         if distances:
             return torch.tensor([
-                magnitude(x[b].detach().numpy()) for b in range(x.shape[0])
+                magnitude(x[b].numpy(force=True)) for b in range(x.shape[0])
             ])
         return torch.tensor([
-            magnitude(compute_unique_distances(x[b].detach().numpy())) for b in range(x.shape[0])
+            magnitude(compute_unique_distances(x[b].numpy(force=True))) for b in range(x.shape[0])
         ])
 
     def get_tag(self):

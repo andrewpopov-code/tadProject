@@ -10,7 +10,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
-from utils.math import unique_points
+from .homology import persistence_norm, diagrams
 
 
 def _dist(i, j, d, m):
@@ -87,7 +87,6 @@ def information(X: np.ndarray):  # FIXME
 
 
 def mle(X: np.ndarray, k: int = 5):
-    from skdim.id import MLE
     nn = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nn.kneighbors()
 
@@ -146,3 +145,9 @@ def two_nn(X: np.ndarray):
     cdf = np.linspace(0, 1 - 1/n, n)
     lr = LinearRegression(fit_intercept=False)
     return lr.fit(np.log(mu).reshape(-1, 1), -np.log(1 - cdf).reshape(-1, 1)).coef_[0, 0]
+
+
+def persistence(X: np.ndarray):
+    n = X.shape[0]
+    l = persistence_norm(diagrams(X))
+    return np.log(n) / (np.log(n) - np.log(l))
