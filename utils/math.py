@@ -24,3 +24,7 @@ def mle_aggregate(dim: np.ndarray):
 
 def mle_aggregate_torch(dim: torch.Tensor):
     return 1 / torch.mean(1 / dim)
+
+
+def inf_mask(arr: np.ndarray):
+    return np.ma.fix_invalid(arr).mask

@@ -18,7 +18,7 @@ def draw_heatmap(d: np.ndarray):
     return fig
 
 
-def plot_persistence(dgm: list):
+def plot_persistence(dgm: list[np.ndarray]):
     """
     :param dgm: persistence diagrams of kind: dimension x birth time x death time
     :return: figure with diagrams drawn
@@ -38,6 +38,19 @@ def plot_persistence_each(dgms: list) -> plt.Figure:
     for i in range(len(dgms)):
         plt.subplot(1, len(dgms), i + 1)
         plot_diagrams(dgms[i])
+    return fig
+
+
+def plot_persistence_pdf(dgm: list[np.ndarray]) -> plt.Figure:
+    """
+    :param dgm: persistence diagrams of kind: dimension x birth time x death time
+    :return: figure with plotted cdf's
+    """
+    l: list[np.ndarray] = [dgm[i][1] - dgm[i][0] for i in range(len(dgm))]
+    fig, axes = plt.subplots(1, len(dgm))
+    for i in range(len(dgm)):
+        axes[i].plot(np.cumsum(l[i].sort()) / np.sum(l[i]))
+        axes[i].set_title(f'H{i}')
     return fig
 
 
