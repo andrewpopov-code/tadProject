@@ -15,8 +15,8 @@ class VietorisRips(torch.autograd.Function):
             [
                 np.stack(
                     [
-                        np.pad(dgms[b][0], ((0, m_dgm - dgms[b][0].shape[0]), (0, 0)), constant_values=np.inf),
-                        np.pad(dgms[b][1], ((0, m_dgm - dgms[b][1].shape[0]), (0, 0)), constant_values=np.inf)
+                        np.pad(dgms[b][0], ((0, m_dgm - dgms[b][0].shape[0]), (0, 0)), constant_values=np.nan),
+                        np.pad(dgms[b][1], ((0, m_dgm - dgms[b][1].shape[0]), (0, 0)), constant_values=np.nan)
                     ]
                 ) for b in range(X.shape[0])
             ]
