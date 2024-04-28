@@ -13,6 +13,7 @@ class VietorisRips(torch.autograd.Function):
         dgms_tensor, gens_tensor = diagrams_to_tensor(dgms), diagrams_to_tensor(gens, fill_value=-1)
 
         gens_birth, gens_death = gens_tensor[:, :, :-2], gens_tensor[:, :, -2:]
+        gens_birth.requires_grad = gens_death.requires_grad = False
         ctx.save_for_backward(torch.tensor(X.shape), gens_birth, gens_death)
 
         return dgms_tensor[:, :, :, 0], dgms_tensor[:, :, :, 1]

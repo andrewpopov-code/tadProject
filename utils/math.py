@@ -42,14 +42,14 @@ def diagrams_to_tensor(dgms: [list[np.ndarray], list[list[np.ndarray]]], fill_va
                     ]
                 ) for b in range(len(dgms))
             ]
-        ), requires_grad=False)
+        ), requires_grad=True)
 
     m_dgm = max(dgms, key=lambda x: x.shape[0]).shape[0]
-    m_dgm1= max(dgms, key=lambda x: x.shape[1]).shape[1]
+    m_dgm1 = max(dgms, key=lambda x: x.shape[1]).shape[1]
     return torch.tensor(
         np.stack(
             [
                 np.pad(dgms[dim], ((0, m_dgm - dgms[dim].shape[0]), (0, m_dgm1 - dgms[dim].shape[1])), constant_values=fill_value) for dim in range(len(dgms))
             ]
-        ), requires_grad=False
+        ), requires_grad=True
     )
