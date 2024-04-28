@@ -34,6 +34,7 @@ class MOM(torch.autograd.Function):
         _, n, k = shape
         left = distances[:, :, :-1] / (n * k * (distances[:, :, :-1] - distances.mean(dim=-1).unsqueeze(dim=2)) * (distances[:, :, :-1] - distances.mean(dim=-1).unsqueeze(dim=2)))
         right = (distances[:, :, -1] - distances.sum(dim=-1)) / (n * k * (distances[:, :, -1] - distances.mean(dim=-1)) * (distances[:, :, -1] - distances.mean(dim=-1)))
+        left.requires_grad = right.requires_grad = False
         return torch.cat((left, right.unsqueeze(-1)), dim=2) * grad_output
 
 

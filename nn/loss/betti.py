@@ -1,14 +1,14 @@
-from typing import Any
-
 import torch
 import numpy as np
-from functional.homology import diagrams
+from .vr import VietorisRips
 
 
 class BettiLoss(torch.autograd.Function):
     @staticmethod
     def forward(ctx, X: torch.Tensor, Y: torch.Tensor):
-        dX, dY = diagrams(X.numpy(force=True)), diagrams(Y.numpy(force=True))
+        dgms_tensorXb, dgms_tensorXd = VietorisRips(X)
+        dgms_tensorYb, dgms_tensorYd = VietorisRips(Y)
+
         bY = [a.shape[0] for a in dY]
         ctx.save_for_backward(dX, dY, bY)
         l1 = np.sum([np.sum(1 - (dX[i][:bY[i], 1] - dX[i][:bY[i], 0]) * (dX[i][:bY[i], 1] - dX[i][:bY[i], 0])) for i in range(len(dX))])
@@ -16,7 +16,7 @@ class BettiLoss(torch.autograd.Function):
         return l1 + l2
 
     @staticmethod
-    def backward(ctx: Any, grad_output: Any):
+    def backward(ctx, grad_output):
         dX, dY, bY = ctx.saved_tensors
         return torch.stack([
             torch.stack(
