@@ -141,13 +141,17 @@ def two_nn(X: np.ndarray):
     nn = NearestNeighbors(n_neighbors=2).fit(X)
     distances, _ = nn.kneighbors()
 
-    mu = np.sort(distances[:, 1] / distances[:, 0])
-    cdf = np.linspace(0, 1 - 1/n, n)
-    lr = LinearRegression(fit_intercept=False)
-    return lr.fit(np.log(mu).reshape(-1, 1), -np.log(1 - cdf).reshape(-1, 1)).coef_[0, 0]
+    x = np.log(np.sort(distances[:, 1] / distances[:, 0]))
+    y = -np.log(1 - np.linspace(0, 1 - 1/n, n))
+    return np.sum(x*y) / np.square(x).sum()
 
 
 def persistence(X: np.ndarray):
     n = X.shape[0]
     l = persistence_norm(diagrams(X))
     return np.log(n) / (np.log(n) - np.log(l))
+
+
+def persistence_reg(X: np.ndarray):  # TODO: reimplement this
+    n = np.arange(0, X.shape[0], X.shape[0] // 10)
+    ...

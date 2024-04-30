@@ -38,7 +38,7 @@ def diagrams_to_tensor(dgms: [list[np.ndarray], list[list[np.ndarray]]], fill_va
             [
                 np.stack(
                     [
-                        np.pad(dgms[b][dim], ((0, m_dgm - dgms[b][dim].shape[0]), (0, m_dgm1 - dgms[b][dim].shape[1])), constant_values=fill_value) for dim in range(len(dgms[b]))
+                        np.pad(dgms[b][dim], ((0, m_dgm - dgms[b][dim].shape[0]), (m_dgm1 - dgms[b][dim].shape[1], 0)), constant_values=fill_value) for dim in range(len(dgms[b]))
                     ]
                 ) for b in range(len(dgms))
             ]
@@ -49,7 +49,7 @@ def diagrams_to_tensor(dgms: [list[np.ndarray], list[list[np.ndarray]]], fill_va
     return torch.tensor(
         np.stack(
             [
-                np.pad(dgms[dim], ((0, m_dgm - dgms[dim].shape[0]), (0, m_dgm1 - dgms[dim].shape[1])), constant_values=fill_value) for dim in range(len(dgms))
+                np.pad(dgms[dim], ((0, m_dgm - dgms[dim].shape[0]), (m_dgm1 - dgms[dim].shape[1], 0)), constant_values=fill_value) for dim in range(len(dgms))
             ]
         ), requires_grad=requires_grad
     )

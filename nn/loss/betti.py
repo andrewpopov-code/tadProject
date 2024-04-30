@@ -29,7 +29,7 @@ class BettiLossFunction(torch.autograd.Function):
             ]
         )
 
-        return l1 + l2
+        return (l1 + l2).sum()
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -63,5 +63,24 @@ class BettiLoss(nn.Module):
         self.loss_fn = BettiLossFunction.apply
 
     def forward(self, X: torch.Tensor, Y: torch.Tensor):
-        dgms_tensorXb, dgms_tensorXd, dgms_tensorYb, dgms_tensorYd = *self.filtration(F.normalize(X)), *self.filtration(F.normalize(Y))
+        dgms_tensorXb, dgms_tensorXd, dgms_tensorYb, dgms_tensorYd = *self.filtration(F.normalize(X))[:2], *self.filtration(F.normalize(Y))[:2]
         return self.loss_fn(dgms_tensorXb, dgms_tensorXd, dgms_tensorYb, dgms_tensorYd)
+
+
+class BettiCurveLoss(nn.Module):
+    def __init__(self, maxdim: int = 1, n_bins: int = 100):
+        super().__init__()
+        self.maxdim = maxdim
+        self.n_bins = n_bins
+        self.filtration = VietorisRips.apply
+
+    def forward(self, X: torch.Tensor, Y: torch.Tensor):
+        bcX, bcY = self.curves(X), self.curves(Y)
+        return torch.square(bcX - bcY).sum()
+
+    def curves(self, X: torch.Tensor):
+        dgms_tensorXb, dgms_tensorXd = self.filtration(X)[:2]
+        dgms_tensorXb, dgms_tensorXd = torch.nan_to_num(dgms_tensorXb), torch.nan_to_num(dgms_tensorXd, posinf=0)
+        global_min, global_max = dgms_tensorXb.min(), dgms_tensorXd.max()
+        steps = torch.linspace(global_min, global_max, self.n_bins)
+        return ((dgms_tensorXb.unsqueeze(2) <= steps.reshape(1, 1, -1, 1)) & (dgms_tensorXd.unsqueeze(2) > steps.reshape(1, 1, -1, 1))).sum(dim=-1)

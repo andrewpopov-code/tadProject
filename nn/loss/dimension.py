@@ -38,11 +38,19 @@ class MOM(torch.autograd.Function):
         return torch.cat((left, right.unsqueeze(-1)), dim=2) * grad_output
 
 
+class TwoNN(nn.Module):
+    def forward(self, distances: torch.Tensor):
+        n = distances.shape[1]
+        x = torch.log(torch.sort(distances[:, :, 1] / distances[:, :, 0]).values)
+        y = -torch.log(1 - torch.linspace(0, 1 - 1 / n, n))
+        return torch.sum(x*y, dim=-1) / torch.square(x).sum(dim=-1)
+
+
 class Dimension(nn.Module):
-    def __init__(self, k: int, method: str = 'mle'):
+    def __init__(self, k: int = None, method: str = 'two_nn'):
         super().__init__()
-        self.k = k
-        self.est = MLE.apply if method == 'mle' else MOM.apply
+        self.k = k or 2
+        self.est = TwoNN() if method == 'two_nn' else MLE.apply if method == 'mle' else MOM.apply
 
     def forward(self, X: torch.Tensor):
         dist = torch.cdist(X, X).topk(k=self.k + 1, largest=False, sorted=True).values[:, :, 1:]
