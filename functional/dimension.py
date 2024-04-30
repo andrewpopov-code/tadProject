@@ -10,7 +10,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
-from .homology import persistence_norm, diagrams
+from .homology import persistence_norm, diagrams, drop_inf
 
 
 def _dist(i, j, d, m):
@@ -152,6 +152,12 @@ def persistence(X: np.ndarray):
     return np.log(n) / (np.log(n) - np.log(l))
 
 
-def persistence_reg(X: np.ndarray):  # TODO: reimplement this
-    n = np.arange(0, X.shape[0], X.shape[0] // 10)
-    ...
+def persistence_reg(X: np.ndarray, p: float, maxdim: int = 1):
+    n = np.arange(1, X.shape[0] + 1, X.shape[0] // 10)
+    e = np.zeros(n.size)
+    for i, ni in enumerate(n):
+        dgms = np.vstack([drop_inf(d) for d in diagrams(X[:ni], maxdim=maxdim)])
+        e[i] = np.power(dgms[1] - dgms[0], p).sum()
+    x, y = np.log(n), np.log(e)
+    m = np.sum(x*y) / np.square(x).sum()
+    return p / (1 - m)

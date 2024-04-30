@@ -9,7 +9,7 @@ def pq_loss(dgms_tensorXb: torch.Tensor, dgms_tensorXd: torch.Tensor, left: floa
     return torch.sum(left * right)
 
 
-def signature_loss(X: torch.Tensor, Z: torch.Tensor):
+def signature_loss(X: torch.Tensor, Z: torch.Tensor):  # FIXME
     gens_tensorXb, gens_tensorXd = VietorisRips.apply(X)[2:]
     gens_tensorZb, gens_tensorZd = VietorisRips.apply(Z)[2:]
     dX, dZ = torch.cdist(X, X), torch.cdist(Z, Z)
@@ -33,16 +33,16 @@ def signature_loss(X: torch.Tensor, Z: torch.Tensor):
 
 
 def ph_dimension_loss(X: torch.Tensor):
-    n = torch.log(torch.arange(1, X.shape[1] + 1))
-    e = torch.zeros((X.shape[0], X.shape[1]))
-    for ni in range(X.shape[1]):
-        dgms_tensorXb, dgms_tensorXd = VietorisRips.apply(X[:, :ni + 1])[:2]
+    n = torch.log(torch.arange(1, X.shape[1] + 1, X.shape[1] // 10))
+    e = torch.zeros((X.shape[0], n.shape[0]))
+    for ni in range(1, X.shape[1] + 1, X.shape[1] // 10):
+        dgms_tensorXb, dgms_tensorXd = VietorisRips.apply(X[:, :ni])[:2]
         dgms_tensorXb = torch.nan_to_num(dgms_tensorXb, 0, 0)
         dgms_tensorXd = torch.nan_to_num(dgms_tensorXd, 0, 0)
 
-        e[:, ni] = torch.sum(dgms_tensorXd - dgms_tensorXb, dim=1)
+        e[:, (ni - 1) // 10] = torch.sum(dgms_tensorXd - dgms_tensorXb, dim=1)
     return torch.sum(
         torch.abs(
-            (X.shape[1] * torch.sum(n * e) - n.sum() * e.sum(dim=1)) / (X.shape[1] * torch.square(n).sum() - torch.square(n.sum()))
+            (n.shape[0] * torch.sum(n * e, dim=1) - n.sum() * e.sum(dim=1)) / (X.shape[1] * torch.square(n).sum() - torch.square(n.sum()))
         )
     )

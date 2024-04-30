@@ -56,9 +56,9 @@ class BettiLossFunction(torch.autograd.Function):
 
 
 class BettiLoss(nn.Module):
-    def __init__(self, dim: int = 1):
+    def __init__(self, maxdim: int = 1):
         super().__init__()
-        self.maxdim = dim
+        self.maxdim = maxdim
         self.filtration = VietorisRips.apply
         self.loss_fn = BettiLossFunction.apply
 

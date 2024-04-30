@@ -53,3 +53,7 @@ def diagrams_to_tensor(dgms: [list[np.ndarray], list[list[np.ndarray]]], fill_va
             ]
         ), requires_grad=requires_grad
     )
+
+
+def boundary_matrix(gens: np.ndarray, x: np.ndarray):
+    return np.logical_or.reduce(gens.reshape(*gens.shape, 1) == x.reshape(1, -1), axis=3).astype(int)

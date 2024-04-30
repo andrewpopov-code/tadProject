@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from functional.homology import diagrams, drop_inf
-from utils.math import diagrams_to_tensor
+from utils.math import diagrams_to_tensor, boundary_matrix
 
 
 def filtration_return(ret: list):
@@ -12,14 +12,9 @@ def filtration_return(ret: list):
     return dgms_tensor[:, :, :, 0], dgms_tensor[:, :, :, 1], gens_birth, gens_death
 
 
-def boundary_matrix(gens: np.ndarray, x: np.ndarray):
-    return np.logical_or.reduce(gens.reshape(*gens.shape, 1) == x.reshape(1, -1), axis=3).astype(int)
-
-
 class VietorisRips(torch.autograd.Function):
     @staticmethod
     def forward(X: torch.Tensor):
-        # Return birth and death times separately
         ret = [diagrams(X[b].numpy(force=True), gens=True) for b in range(X.shape[0])]
         return filtration_return(ret)
 

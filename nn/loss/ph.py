@@ -1,3 +1,5 @@
+from typing import Callable
+
 import torch
 import torch.nn as nn
 from .vr import VietorisRips, CrossBarcode
@@ -29,7 +31,7 @@ class PQLoss(nn.Module):
 
 
 class CrossBarcodeLoss(nn.Module):
-    def __init__(self, loss: nn.Module, maxdim: int = 1):
+    def __init__(self, loss: Callable, maxdim: int = 1):
         super().__init__()
         self.maxdim = maxdim
         self.filtration = CrossBarcode.apply
