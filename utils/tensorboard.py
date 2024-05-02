@@ -1,4 +1,5 @@
-import torch
+import pandas as pd
+import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from persim import plot_diagrams
@@ -75,3 +76,12 @@ def plot_betti_each(bc: list[np.ndarray]) -> plt.Figure:
     for i in range(len(bc)):
         plot_betti(bc[i], axes[i])
     return fig
+
+
+def plot_dimension(dim: list[np.ndarray], columns: list[str]) -> plt.Figure:
+    """
+    :param dim: list of different dimension estimates
+    :param columns: labels of estimates
+    :return: figure with the pairwise comparison chart
+    """
+    return sns.pairplot(pd.DataFrame(dim, columns=columns).T, diag_kind='hist').figure

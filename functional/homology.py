@@ -1,5 +1,6 @@
 import numpy as np
 from gph import ripser_parallel
+from gudhi.wasserstein.barycenter import lagrangian_barycenter
 from scipy.spatial import distance_matrix
 from .entropy import entropy
 from utils.math import unique_points, inf_mask
@@ -18,6 +19,14 @@ def drop_inf(diag: list[np.ndarray]) -> list[np.ndarray]:
         if mask.shape:
             diag[dim] = diag[dim][~mask.any(axis=1)]
     return diag
+
+
+def diagrams_barycenter(diag: list[list[np.ndarray]]) -> list[np.ndarray]:
+    diag = list(map(drop_inf, diag))
+    bary = []
+    for dim in range(len(diag)):
+        bary.append(lagrangian_barycenter([d[dim] for d in diag]))
+    return bary
 
 
 def betti(diag, n_bins: int = 100):

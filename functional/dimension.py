@@ -1,16 +1,15 @@
 import numpy as np
 
 from scipy.spatial.distance import pdist
-from scipy.spatial import distance_matrix
-from scipy.sparse.csgraph import shortest_path
-from scipy.sparse import csr_matrix
 
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
-from .homology import persistence_norm, diagrams, drop_inf
+from .homology import diagrams, drop_inf
+from .magnitude import magnitude
+from utils.math import beta1, beta1_intercept
 
 
 def _dist(i, j, d, m):
@@ -35,55 +34,15 @@ def capacity(X: np.ndarray):  # FIXME
     m = np.zeros_like(d)
     for i, t in enumerate(d):
         m[i] = _capacity_alg(d, t, X.shape[0])
-    lr = LinearRegression(fit_intercept=False)
-    lr.fit(np.log(d).reshape(-1, 1), np.log(m).reshape(-1, 1))
-    return lr.coef_[0, 0]
+    return beta1(np.log(d), np.log(m))
 
 
-def corr(X: np.ndarray):
-    # X \in M(n, d)
+def corr(X: np.ndarray, n_steps: int = 30):
     d = pdist(X, metric='euclidean')
     d.sort()
-    c = np.zeros_like(d)
-    for i, t in enumerate(d):
-        c[i] = ((d <= t).sum()) / X.shape[0] / (X.shape[0] - 1)
-
-    lr = LinearRegression(fit_intercept=False)
-    lr.fit(np.log(d).reshape(-1, 1), np.log(c).reshape(-1, 1))
-    return lr.coef_[0, 0]
-
-
-def _information_alg(d: np.ndarray, R: float, m):
-    # B_i(r) = # {j | d(i, j) < r}
-    a = np.zeros(m)
-    b = np.zeros(m)
-    for i in range(m):
-        for j in range(i + 1, m):
-            if _dist(i, j, d, m) < R:
-                a[i] += 1
-                a[j] += 1
-            elif _dist(i, j, d, m) == R:
-                b[i] += 1
-                b[j] += 1
-    return a + np.ones_like(a), b
-
-
-def information(X: np.ndarray):  # FIXME
-    d = pdist(X, metric='euclidean')
-    R = shortest_path(csr_matrix(distance_matrix(X, X))).max(axis=-1)
-    S = np.ceil(np.repeat(R.reshape(1, -1), d.size, axis=0).T / np.repeat(d.reshape(1, -1), X.shape[0], axis=0)).astype(int)
-
-    D = np.zeros(X.shape[0], d.size)  # local dimensions
-    for i, t in enumerate(d):
-        n, b = _information_alg(d, t, X.shape[0])
-        D[:, i] = t * (n / b)
-
-    # Calculate the information entropy of different topological distance scale r for each node i.
-    for i in range(X.shape[0]):
-        p = np.zeros_like(d)
-        for j in range(d.size):
-            # d_sum = d[:, r]
-            pass
+    u = np.linspace(d.min(), d.max(), n_steps)
+    c = ((d.reshape(-1, 1) <= u).sum(axis=1)) / X.shape[0] / (X.shape[0] - 1)
+    return beta1(np.log(d), np.log(c))
 
 
 def mle(X: np.ndarray, k: int = 5):
@@ -137,27 +96,24 @@ def local_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):
 
 def two_nn(X: np.ndarray):
     n = X.shape[0]
-
     nn = NearestNeighbors(n_neighbors=2).fit(X)
     distances, _ = nn.kneighbors()
-
-    x = np.log(np.sort(distances[:, 1] / distances[:, 0]))
-    y = -np.log(1 - np.linspace(0, 1 - 1/n, n))
-    return np.sum(x*y) / np.square(x).sum()
+    return beta1(np.log(np.sort(distances[:, 1] / distances[:, 0])), -np.log(1 - np.linspace(0, 1 - 1/n, n)))
 
 
-def persistence(X: np.ndarray):
-    n = X.shape[0]
-    l = persistence_norm(diagrams(X))
-    return np.log(n) / (np.log(n) - np.log(l))
-
-
-def persistence_reg(X: np.ndarray, p: float, maxdim: int = 1):
+def persistence(X: np.ndarray, p: float = 1):
     n = np.arange(1, X.shape[0] + 1, X.shape[0] // 10)
     e = np.zeros(n.size)
     for i, ni in enumerate(n):
-        dgms = np.vstack([drop_inf(d) for d in diagrams(X[:ni], maxdim=maxdim)])
+        dgms = drop_inf(diagrams(X[:ni])[0])
         e[i] = np.power(dgms[1] - dgms[0], p).sum()
-    x, y = np.log(n), np.log(e)
-    m = np.sum(x*y) / np.square(x).sum()
+    m = beta1(np.log(n), np.log(e))
     return p / (1 - m)
+
+
+def magnitude_reg(X: np.ndarray, t: np.ndarray, i: int = None, j: int = None):
+    m = np.zeros_like(t)
+    for i in range(t.shape[0]):
+        m[i] = magnitude(t[i] * X)
+    i, j = i or 0, j or t.shape[0]
+    return beta1_intercept(np.log(m[i:j]), np.log(t[i:j]))

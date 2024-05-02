@@ -1,10 +1,7 @@
-from typing import Callable
-
 import torch
 import torch.nn as nn
-from .vr import VietorisRips, CrossBarcode
+from .vr import VietorisRips
 from .functional import pq_loss, ph_dimension_loss, signature_loss
-from functional.homology import drop_inf
 
 
 class PHRegressionLoss(nn.Module):
@@ -28,14 +25,3 @@ class PQLoss(nn.Module):
         dgms_tensorXb, dgms_tensorXd = self.filtration(X)[:2]
         dgms_tensorXb, dgms_tensorXd = torch.nan_to_num(dgms_tensorXb), torch.nan_to_num(dgms_tensorXd)
         return pq_loss(dgms_tensorXb, dgms_tensorXd, self.left, self.right)
-
-
-class CrossBarcodeLoss(nn.Module):
-    def __init__(self, loss: Callable, maxdim: int = 1):
-        super().__init__()
-        self.maxdim = maxdim
-        self.filtration = CrossBarcode.apply
-        self.loss = loss
-
-    def forward(self, X: torch.Tensor, Y: torch.Tensor):
-        ...

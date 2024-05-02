@@ -8,7 +8,7 @@ from utils.math import unique_points
 from utils.tensorboard import draw_heatmap, plot_persistence, plot_persistence_each, plot_betti_each
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from functional.homology import diagrams, betti, persistence_norm, persistence_entropy, pairwise_dist, mtd, rtd
+from functional.homology import diagrams, diagrams_barycenter, betti, persistence_norm, persistence_entropy, pairwise_dist, mtd, rtd
 
 
 @dataclass
@@ -73,7 +73,8 @@ class Persistence(IntrinsicModule):
         return d_mtd, d_rtd
 
     def log(self, args: tuple, kwargs: dict, result: PersistenceInformation, tag: str, writer: SummaryWriter):
-        pi, bc = result.diagrams[0], result.betti[0]
+        pi = diagrams_barycenter(result.diagrams)
+        bc = betti(pi)
 
         for j in range(bc.shape[1]):
             writer.add_scalars(
