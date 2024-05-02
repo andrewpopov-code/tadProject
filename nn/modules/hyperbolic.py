@@ -1,10 +1,15 @@
 import torch
+import torch.nn as nn
+import torch.nn.init as init
+from torch.nn.functional import normalize
 from torch.utils.tensorboard import SummaryWriter
+
+import math
 
 from .base import IntrinsicBase
 from .module import IntrinsicModule
 from utils.math import image_to_cloud, compute_unique_distances
-from functional.delta import delta_hyperbolicity
+from functional.delta import delta_hyperbolicity_torch, delta_hyperbolicity, mobius_addition_torch, conformal_torch
 
 
 class DeltaHyperbolicity(IntrinsicModule):
@@ -25,7 +30,7 @@ class DeltaHyperbolicity(IntrinsicModule):
             d = x[b].numpy(force=True) if distances else compute_unique_distances(image_to_cloud(x[b].numpy(force=True)))
             delta[b] = delta_hyperbolicity(d)
 
-        return torch.tensor(delta)
+        return delta
 
     def log(self, args: tuple, kwargs: dict, delta, tag: str, writer: SummaryWriter):
         writer.add_scalar('/'.join((kwargs['label'], tag)), delta.mean(), self.step)
@@ -34,3 +39,56 @@ class DeltaHyperbolicity(IntrinsicModule):
 
     def get_tag(self):
         return self.tag
+
+
+class Linear(nn.Module):
+    def __init__(self, in_features: int, out_features: int, c: float = None):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features, bias=False)
+        self._c = c
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mx = self.linear(x)
+        c = self.c(x)
+        return torch.tanh(
+            mx.norm() / x.norm() * torch.atanh(torch.sqrt(c * x.norm()))
+        ) * normalize(mx) / torch.sqrt(c)
+
+    def c(self, x: torch.Tensor = None) -> torch.Tensor:
+        return self._c or torch.square(0.144 / delta_hyperbolicity_torch(x))
+
+
+class Concat(nn.Module):
+    def __init__(self, in_features: int, out_features: int, c: float):
+        super().__init__()
+        self._c = c
+        self.linear1 = Linear(in_features, out_features, c)
+        self.linear2 = Linear(in_features, out_features, c)
+
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return mobius_addition_torch(self.linear1(x), self.linear2(y), self._c)
+
+
+class HypSoftmax(nn.Module):
+    def __init__(self, in_features: int, out_features: int, c: float):
+        super().__init__()
+        self.P = nn.Parameter(torch.empty((out_features, in_features)), requires_grad=True)
+        self.A = nn.Parameter(torch.empty((out_features, in_features)), requires_grad=True)
+        self.softmax = nn.Softmax(dim=-1)
+        self._c = nn.Parameter(torch.tensor(c), requires_grad=False)
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        init.kaiming_uniform_(self.P, a=math.sqrt(5))
+        init.kaiming_uniform_(self.A, a=math.sqrt(5))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        num = 2 * self._c * torch.sum(mobius_addition_torch(-self.P, x, self._c) * self.A, dim=-1)
+        den = (1 - self._c * torch.square(mobius_addition_torch(-self.P, x, self._c)).sum(dim=-1)) * torch.sum(self.A * self.A, dim=-1)
+        return self.softmax(
+            conformal_torch(self.P, self._c) * torch.norm(self.A, dim=-1) / torch.sqrt(self._c) * torch.asinh(num / den)
+        )

@@ -13,7 +13,7 @@ def unique_points(x: np.ndarray):
     return np.unique(x, axis=-2)
 
 
-def compute_unique_distances(X: np.ndarray):
+def compute_unique_distances(X: np.ndarray) -> np.ndarray:
     X = unique_points(X)
     return distance_matrix(X, X)
 
