@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from utils.math import neighbors
 
 
 class MLE(torch.autograd.Function):
@@ -53,5 +54,5 @@ class Dimension(nn.Module):
         self.est = TwoNN() if method == 'two_nn' else MLE.apply if method == 'mle' else MOM.apply
 
     def forward(self, X: torch.Tensor):
-        dist = torch.cdist(X, X).topk(k=self.k + 1, largest=False, sorted=True).values[:, :, 1:]
+        dist, _ = neighbors(X, self.k)
         return self.est(dist)

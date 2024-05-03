@@ -14,7 +14,7 @@ def min_max_prod_torch(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 def delta_hyperbolicity(X: np.ndarray, distances: bool = True) -> float:
     p = 0
     d = X if distances else distance_matrix(X, X)
-    row, col = d[p, :].reshape(X.shape[0], 1), d[:, p].reshape(1, X.shape[0])
+    row, col = np.expand_dims(d[p, :], axis=-1), np.expand_dims(d[:, p], axis=0)
     A = 0.5 * (row + col - d)
     maxmin = min_max_prod(A, A)
 

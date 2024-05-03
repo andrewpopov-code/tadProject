@@ -99,7 +99,7 @@ def r_cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
     inf_block = np.triu(np.full_like(XX, np.inf), 1) + XX
 
     M = np.block([
-        [np.zeros_like(XX), inf_block.T, np.zeros((XX.shape[0], 1))],
+        [XX, inf_block.T, np.zeros((XX.shape[0], 1))],
         [inf_block, np.minimum(XX, YY), np.full((XX.shape[0], 1), np.inf)],
         [np.zeros((1, XX.shape[0])), np.full((1, XX.shape[0]), np.inf), 0]
     ])

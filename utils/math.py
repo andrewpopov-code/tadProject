@@ -73,3 +73,26 @@ def beta1(x: np.ndarray, y: np.ndarray):
 def beta1_intercept(x: np.ndarray, y: np.ndarray):
     n = x.size
     return (np.sum(x*y) - n*x.mean()*y.mean()) / (np.sum(x*x) - n*x.mean()*x.mean())
+
+
+def batch_select(X: torch.Tensor, ix: torch.Tensor) -> torch.Tensor:
+    dummy = ix.unsqueeze(-1).expand(*ix.shape, X.shape[-1]).squeeze(-2)
+    return torch.gather(X.detach().unsqueeze(1).repeat(1, ix.shape[1], 1, 1), 2, dummy)
+
+
+def neighbors(X: torch.Tensor, k: int) -> tuple[torch.Tensor, torch.Tensor]:
+    dist = torch.cdist(X, X).topk(k=k + 1, largest=False, sorted=True)
+    return dist.values[:, :, 1:], dist.indices[:, :, 1:]
+
+
+def set_ops(X: torch.Tensor, Y: torch.Tensor) -> tuple:
+    combined = torch.cat((X, Y), dim=-1)
+    counts = torch.nn.functional.one_hot(combined).sum(dim=-2)
+
+    union = torch.sum(counts > 0, dim=-1)
+    intersection = torch.sum(counts > 1, dim=-1)
+    delta = union - intersection
+    diffX = X.shape[-1] - intersection  # only in X
+    diffY = Y.shape[-1] - intersection  # only in Y
+
+    return union, intersection, delta, diffX, diffY
