@@ -1,6 +1,5 @@
 import torch
 from .vr import VietorisRips
-from functional.homology import drop_inf
 from utils.math import batch_select, neighbors, set_ops
 
 
@@ -13,13 +12,10 @@ def pq_loss(dgms_tensorXb: torch.Tensor, dgms_tensorXd: torch.Tensor, left: floa
 def signature_loss(X: torch.Tensor, Z: torch.Tensor):  # FIXME
     _, gens_tensorXd = VietorisRips.apply(X)[2:]
     _, gens_tensorZd = VietorisRips.apply(Z)[2:]
-    dX, dZ = torch.cdist(X, X), torch.cdist(Z, Z)
-
-    # FIXME: Different axes select
-    distXX = batch_select(dX, gens_tensorXd)
-    distZX = batch_select(dZ, gens_tensorXd)
-    distZZ = batch_select(dZ, gens_tensorZd)
-    distXZ = batch_select(dX, gens_tensorZd)
+    distXX = torch.norm(batch_select(X, gens_tensorXd[:, :, :, 1]) - batch_select(X, gens_tensorXd[:, :, :, 0]))
+    distZX = torch.norm(batch_select(Z, gens_tensorXd[:, :, :, 1]) - batch_select(Z, gens_tensorXd[:, :, :, 0]))
+    distZZ = torch.norm(batch_select(Z, gens_tensorZd[:, :, :, 1]) - batch_select(Z, gens_tensorZd[:, :, :, 0]))
+    distXZ = torch.norm(batch_select(X, gens_tensorZd[:, :, :, 1]) - batch_select(X, gens_tensorZd[:, :, :, 0]))
 
     return torch.sqrt(torch.square(distXX - distZX).sum()) / 2 + torch.sqrt(torch.square(distXZ - distZZ).sum()) / 2
 

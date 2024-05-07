@@ -4,9 +4,11 @@ from torch.utils.tensorboard import SummaryWriter
 from typing import Callable, Union
 import os
 
-from .topology import Persistence, Dimension, DeltaHyperbolicity
+from .homology import Persistence
+from .dimension import Dimension
+from .hyperbolic import DeltaHyperbolicity
 from .base import IntrinsicBase
-from nn.modules.module import IntrinsicModule
+from .module import IntrinsicModule
 
 
 class _Hook:
@@ -54,7 +56,7 @@ class IntrinsicObserver(IntrinsicBase):
             topology_children=topology_modules
         )
         self.net = net
-        self.forward_information: list[dict[tuple[int, str], list]] = [] # TODO: figure out if results should be saved into .pt files
+        self.forward_information: list[dict[tuple[int, str], list]] = []
         self.registered = set()
 
         for m, tms in post_topology:

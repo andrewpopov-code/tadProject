@@ -58,12 +58,24 @@ def persistence_norm(diag: list[np.ndarray]) -> np.ndarray:
 
 
 def total_persistence(diag: list[np.ndarray], q: float) -> float:
-    diag = drop_inf(diag)
-    z = np.zeros(len(diag))
-    for dim in range(len(diag)):
-        for start, end in diag[dim]:
-            z[dim] += np.power(end - start, q)
-    return z.sum()
+    diag = np.vstack(drop_inf(diag))
+    return np.power(diag[:, 1] - diag[:, 0], q).sum()
+
+
+def amplitude(diag: list[np.ndarray], p: float) -> float:
+    diag = np.vstack(drop_inf(diag))
+    if p == np.inf:
+        return np.max(diag[:, 1] - diag[:, 0]) / np.sqrt(2)
+    return np.power(total_persistence(diag, p), 1 / p) / np.sqrt(2)
+
+
+def landscapes(diag: list[np.ndarray], n_points: int = 100) -> np.ndarray:
+    diag = np.vstack(drop_inf(diag))
+    global_min, global_max = diag.min(), diag.max()
+    steps = np.linspace(global_min, global_max, num=n_points, endpoint=True)
+    f = ((diag[:, 0] <= steps.reshape(-1, 1)) & (diag.mean(axis=-1) > steps.reshape(-1, 1))) * (steps.reshape(-1, 1) - diag[:, 0])
+    s = ((diag[:, 1] >= steps.reshape(-1, 1)) & (diag.mean(axis=-1) <= steps.reshape(-1, 1))) * (-steps.reshape(-1, 1) + diag[:, 1])
+    return np.sort(f + s, axis=-1)[:, ::-1]
 
 
 def ls_moment(diag: list[np.ndarray]):
@@ -77,21 +89,67 @@ def pairwise_dist(bc: np.array):
     ]
 
 
+def _distance_alg(dist: np.ndarray) -> np.ndarray:
+    u, v, p, way = np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int)
+    for i in range(1, dist.shape[0] + 1):
+        p[0] = i
+        j0 = 0
+        minv, used = np.full(dist.shape[1] + 1, np.inf), np.full(dist.shape[1] + 1, False)
+        first = True
+        while p[j0] != 0 or first:
+            first = False
+            used[j0] = True
+            i0, d, j1 = p[j0], np.inf, None
+            for j in range(1, dist.shape[0] + 1):
+                if not used[j]:
+                    cur = dist[i0 - 1, j - 1] - u[i0] - v[j]
+                    if cur < minv[j]:
+                        minv[j] = cur
+                        way[j] = j0
+                    if minv[j] < d:
+                        d = minv[j]
+                        j1 = j
+            for j in range(1, dist.shape[1] + 1):
+                if used[j]:
+                    u[p[j]] += d
+                    v[j] -= d
+                else:
+                    minv[j] -= d
+            j0 = j1
+
+        first = True
+        while j0 or first:
+            first = False
+            j1 = way[j0]
+            p[j0] = p[j1]
+            j0 = j1
+
+    return p[1:] - 1
+
+
+def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf) -> float:
+    diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
+    diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
+    dist = np.power(np.block(
+        [
+            [np.max(np.abs(diagX.reshape(-1, 1, 2) - diagY), axis=-1), np.max(np.abs(diagX.reshape(-1, 1, 2) - diagXp), axis=-1)],
+            [np.max(np.abs(diagYp.reshape(-1, 1, 2) - diagY), axis=-1), np.zeros((diagYp.shape[0], diagXp.shape[0]))]
+        ]
+    ), 1 if q == np.inf else q)  # (X1, ..., Xn, Y1', ..., Ym') x (Y1, ..., Ym, X1', ..., Xn')
+    return np.linalg.norm(
+        np.max(
+            np.abs(np.vstack([diagX, diagXp])[_distance_alg(dist)] - np.vstack([diagY, diagYp])), axis=1
+        ), q
+    )
+
+
 def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
     X = unique_points(X)
     Y = unique_points(Y)
-    XX = distance_matrix(X, X)
-    XY = distance_matrix(X, Y)
-    YY = distance_matrix(Y, Y)
-    M = np.block([
-        [XX, XY],
-        [XY.T, YY]
-    ])
-    return diagrams(M, maxdim=maxdim, distances=True)
+    return diagrams(np.vstack([X, Y]), maxdim=maxdim)
 
 
 def r_cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
-    # X and Y are the same point cloud, but with different embedding values
     X = unique_points(X)
     Y = unique_points(Y)
     XX = distance_matrix(X, X)
