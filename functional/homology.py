@@ -89,7 +89,7 @@ def pairwise_dist(bc: np.array):
     ]
 
 
-def _distance_alg(dist: np.ndarray) -> np.ndarray:
+def _matching_alg(dist: np.ndarray) -> np.ndarray:
     u, v, p, way = np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int)
     for i in range(1, dist.shape[0] + 1):
         p[0] = i
@@ -127,7 +127,7 @@ def _distance_alg(dist: np.ndarray) -> np.ndarray:
     return p[1:] - 1
 
 
-def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf) -> float:
+def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
     diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
     dist = np.power(np.block(
@@ -136,11 +136,15 @@ def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: fl
             [np.max(np.abs(diagYp.reshape(-1, 1, 2) - diagY), axis=-1), np.zeros((diagYp.shape[0], diagXp.shape[0]))]
         ]
     ), 1 if q == np.inf else q)  # (X1, ..., Xn, Y1', ..., Ym') x (Y1, ..., Ym, X1', ..., Xn')
-    return np.linalg.norm(
+    mat = _matching_alg(dist)
+    norm = np.linalg.norm(
         np.max(
-            np.abs(np.vstack([diagX, diagXp])[_distance_alg(dist)] - np.vstack([diagY, diagYp])), axis=1
+            np.abs(np.vstack([diagX, diagXp])[mat] - np.vstack([diagY, diagYp])), axis=1
         ), q
     )
+    if matching:
+        return norm, mat
+    return norm
 
 
 def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
