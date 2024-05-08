@@ -127,16 +127,21 @@ def _matching_alg(dist: np.ndarray) -> np.ndarray:
     return p[1:] - 1
 
 
-def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
-    diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
+def _dist_mat(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndarray:
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
-    dist = np.power(np.block(
+    return np.power(np.block(
         [
-            [np.max(np.abs(diagX.reshape(-1, 1, 2) - diagY), axis=-1), np.max(np.abs(diagX.reshape(-1, 1, 2) - diagXp), axis=-1)],
+            [np.max(np.abs(diagX.reshape(-1, 1, 2) - diagY), axis=-1),
+             np.max(np.abs(diagX.reshape(-1, 1, 2) - diagXp), axis=-1)],
             [np.max(np.abs(diagYp.reshape(-1, 1, 2) - diagY), axis=-1), np.zeros((diagYp.shape[0], diagXp.shape[0]))]
         ]
     ), 1 if q == np.inf else q)  # (X1, ..., Xn, Y1', ..., Ym') x (Y1, ..., Ym, X1', ..., Xn')
-    mat = _matching_alg(dist)
+
+
+def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
+    diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
+    diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
+    mat = _matching_alg(_dist_mat(diagX, diagY, q))
     norm = np.linalg.norm(
         np.max(
             np.abs(np.vstack([diagX, diagXp])[mat] - np.vstack([diagY, diagYp])), axis=1
@@ -145,6 +150,29 @@ def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: fl
     if matching:
         return norm, mat
     return norm
+
+
+def frechet_mean(diagrams: list[np.ndarray], q: float = np.inf) -> np.ndarray:
+    diagrams = drop_inf(diagrams)
+    Y = diagrams[0]
+    stop = False
+    while not stop:
+        k = len(Y)
+        y = [None] * k
+        for i, d in enumerate(diagrams):
+            diagXp, diagYp = d.mean(axis=1) / 2, Y.mean(axis=1) / 2
+            dist = _dist_mat(Y, d, q)
+            mat = _matching_alg(dist)[:k]
+            t = np.zeros_like(mat)
+            for j in range(len(mat)):
+                t[mat[j]] = j
+            y[i] = np.vstack([d, diagYp])[t[:k]].reshape(-1, 1, 2)  # mapping for Y (non-diagonal)
+        y = np.hstack(y).mean(axis=-2)
+        if y == Y:
+            stop = True
+        else:
+            Y = y
+    return Y
 
 
 def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
