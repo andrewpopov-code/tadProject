@@ -1,12 +1,15 @@
 import numpy as np
 import torch
 from torch.nn.functional import normalize
-from functional.homology import diagrams, drop_inf
+from functional.homology import diagrams
 from utils.math import diagrams_to_tensor, gens_to_tensor, boundary_matrix, batch_select
 
 
 def filtration_return(ret: list):
-    dgms, gens = [drop_inf(r[0]) for r in ret], [[r[1][0], *r[1][1]] for r in ret]
+    dgms, gens = [r[0] for r in ret], [
+        [np.vstack((r[1][0], np.repeat(r[1][2].reshape(-1, 1), 3, axis=-1)))] +
+        [np.vstack((a, np.pad(b, ((0, 0), (0, 2)), constant_values=0))) for (a, b) in zip(r[1][1], r[1][3])] for r in ret
+    ]
     dgms_tensor, gens_tensor = diagrams_to_tensor(dgms, requires_grad=True), gens_to_tensor(gens, fill_value=0)
 
     gens_birth, gens_death = gens_tensor[:, :, :, :-2], gens_tensor[:, :, :, -2:]

@@ -9,40 +9,42 @@ from sklearn.cluster import KMeans
 
 from .homology import diagrams, drop_inf
 from .magnitude import magnitude
+from .entropy import entropy
 from utils.math import beta1, beta1_intercept
 
 
-def _dist(i, j, d, m):
-    # dist(u=X[i], v=X[j]) = d[m * i + j - ((i + 2) * (i + 1)) // 2]
-    return d[m * i + j - ((i + 2) * (i + 1)) // 2]
-
-
-def _capacity_alg(d: np.ndarray, R: float, m):
-    c = []
-    ok = True
-    for i in range(m):
-        for j in c:
-            ok = ok and (_dist(j, i, d, m) >= R)
-        if ok:
-            c.append(i)
-    return len(c)
-
-
-def capacity(X: np.ndarray):  # FIXME
-    d = pdist(X, metric='euclidean')
+def information(X: np.ndarray):
+    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+    d = pdist(X)
     d.sort()
-    m = np.zeros_like(d)
-    for i, t in enumerate(d):
-        m[i] = _capacity_alg(d, t, X.shape[0])
-    return beta1(np.log(d), np.log(m))
+    s = np.zeros_like(d)
+    for i in range(d.shape[0]):
+        flat = np.histogramdd(X, bins=int(np.ceil(2 / d[i])))[0].reshape(-1)
+        s[i] = -entropy(flat[flat > 0] / flat.sum(), np.log2)
+    return np.abs(beta1(np.log2(d), s))
 
 
-def corr(X: np.ndarray, n_steps: int = 30):
-    d = pdist(X, metric='euclidean')
+def information_renyi(X: np.ndarray, q: float):
+    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+    d = pdist(X)
     d.sort()
-    u = np.linspace(d.min(), d.max(), n_steps)
-    c = ((d.reshape(-1, 1) <= u).sum(axis=1)) / X.shape[0] / (X.shape[0] - 1)
-    return beta1(np.log(d), np.log(c))
+    s = np.zeros_like(d)
+    for i in range(d.shape[0]):
+        flat = np.histogramdd(X, bins=int(np.ceil(2 / d[i])))[0].reshape(-1)
+        s[i] = np.log(np.power(flat[flat > 0] / flat.sum(), q).sum())
+    return np.abs(beta1(np.log(d), s) / (q - 1))
+
+
+def corrq(X: np.ndarray, q: float):
+    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+    d = pdist(X)
+    d.sort()
+    g = np.power(np.power(2 * np.arange(1, d.shape[0] + 1) / (X.shape[0] - 1), q - 1) / X.shape[0], 1 / (q - 1))
+    return np.abs(beta1(np.log(d), np.log(g)))
+
+
+def corr(X: np.ndarray):
+    return corrq(X, 1)
 
 
 def mle(X: np.ndarray, k: int = 5):
@@ -77,8 +79,15 @@ def ols(X: np.ndarray, k: int = 5, slope_estimator=LinearRegression):
     return d
 
 
-def pca(X: np.ndarray, explained_variance: float = 0.95):
+def pca_sklearn(X: np.ndarray, explained_variance: float = 0.95):
     return PCA(n_components=explained_variance).fit(X).n_components_
+
+
+def pca(X: np.ndarray, explained_variance: float = 0.95):
+    X -= X.mean(axis=-2)
+    S = np.linalg.svd(X, compute_uv=False)
+    S /= np.square(X).sum()
+    return S.size - np.sum(S.cumsum() >= explained_variance) + 1
 
 
 def cluster_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):

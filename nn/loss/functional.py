@@ -28,7 +28,7 @@ def ph_dimension_loss(X: torch.Tensor):
         dgms_tensorXb = torch.nan_to_num(dgms_tensorXb, 0, 0)
         dgms_tensorXd = torch.nan_to_num(dgms_tensorXd, 0, 0)
 
-        e[:, (ni - 1) // 10] = torch.sum(dgms_tensorXd[:, 0] - dgms_tensorXb[:, 0], dim=1)
+        e[:, (ni - 1) // 10] = torch.sum(torch.abs(dgms_tensorXd[:, 0] - dgms_tensorXb[:, 0]), dim=1)
     return torch.sum(
         torch.abs(
             (n.shape[0] * torch.sum(n * e, dim=1) - n.sum() * e.sum(dim=1)) / (X.shape[1] * torch.square(n).sum() - torch.square(n.sum()))

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from scipy.spatial import distance_matrix
+from scipy.special import gamma, jv
 
 
 def image_to_cloud(X: np.ndarray, channel_first: bool = False):
@@ -9,8 +10,8 @@ def image_to_cloud(X: np.ndarray, channel_first: bool = False):
     return X.reshape(X.shape[0] * X.shape[1], X.shape[2])
 
 
-def unique_points(x: np.ndarray):
-    return np.unique(x, axis=-2)
+def unique_points(X: np.ndarray):
+    return np.unique(X, axis=-2)
 
 
 def compute_unique_distances(X: np.ndarray) -> np.ndarray:
@@ -23,7 +24,7 @@ def mle_aggregate(dim: np.ndarray):
 
 
 def mle_aggregate_torch(dim: torch.Tensor):
-    return 1 / torch.mean(1 / dim)
+    return 1 / torch.mean(1 / dim, dim=-1)
 
 
 def inf_mask(arr: np.ndarray):
@@ -96,3 +97,15 @@ def set_ops(X: torch.Tensor, Y: torch.Tensor) -> tuple:
     diffY = Y.shape[-1] - intersection  # only in Y
 
     return union, intersection, delta, diffX, diffY
+
+
+def bessel_kernel2(F: np.ndarray, G: np.ndarray) -> float:
+    n = F.shape[1]
+    k0 = np.power(np.pi, n / 2) / gamma(n / 2 + 1)
+    return np.exp(-2 * np.pi * np.square(distance_matrix(F, G) / np.sqrt(2 * n))) * k0
+
+
+def bessel_kernel(F: np.ndarray, G: np.ndarray, c: float = 2) -> float:
+    n = F.shape[1]
+    r = distance_matrix(F, G)
+    np.power(c / 2, n / 2) * jv(n / 2, np.pi * c * r) / np.power(r, n / 2)

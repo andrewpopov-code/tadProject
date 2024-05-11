@@ -73,9 +73,32 @@ def landscapes(diag: list[np.ndarray], n_points: int = 100) -> np.ndarray:
     diag = np.vstack(drop_inf(diag))
     global_min, global_max = diag.min(), diag.max()
     steps = np.linspace(global_min, global_max, num=n_points, endpoint=True)
-    f = ((diag[:, 0] <= steps.reshape(-1, 1)) & (diag.mean(axis=-1) > steps.reshape(-1, 1))) * (steps.reshape(-1, 1) - diag[:, 0])
-    s = ((diag[:, 1] >= steps.reshape(-1, 1)) & (diag.mean(axis=-1) <= steps.reshape(-1, 1))) * (-steps.reshape(-1, 1) + diag[:, 1])
-    return np.sort(f + s, axis=-1)[:, ::-1]
+    ans = np.maximum(np.minimum(steps.reshape(-1, 1) - diag[:, 0], -steps.reshape(-1, 1) + diag[:, 1]), 0)
+    # f = ((diag[:, 0] <= steps.reshape(-1, 1)) & (diag.mean(axis=-1) > steps.reshape(-1, 1))) * (steps.reshape(-1, 1) - diag[:, 0])
+    # s = ((diag[:, 1] >= steps.reshape(-1, 1)) & (diag.mean(axis=-1) <= steps.reshape(-1, 1))) * (-steps.reshape(-1, 1) + diag[:, 1])
+    # return np.sort(f + s, axis=-1)[:, ::-1]
+    return np.sort(ans, axis=-1)[:, ::-1]
+
+
+def landscape_norm(diag: list[np.ndarray], n_points: int = 100, p: float = np.inf) -> float:
+    l = landscapes(drop_inf(diag), n_points)
+    return np.linalg.norm(np.linalg.norm(l, p, axis=-1), p)
+
+
+def landscape_kernel(diagX: list[np.ndarray], diagY: list[np.ndarray], n_points: int = 100) -> float:
+    lX, lY = landscapes(drop_inf(diagX), n_points), landscapes(drop_inf(diagY), n_points)
+    return np.sqrt(np.square(lX - lY).sum())
+
+
+def scale_kernel(F: list[np.ndarray], G: list[np.ndarray], sigma: float) -> float:
+    F, G = np.vstack(drop_inf(F)), np.vstack(drop_inf(G))
+
+    diff = np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 8 / sigma) - np.exp(-np.square(F - G.rehape(-1, 1, 2)[:, :, ::-1]).sum(dim=-1) / 8 / sigma)
+    return diff.sum() / (8 * np.pi * sigma)
+
+
+def heat_kernel(F: np.ndarray, G: np.ndarray, t: float) -> float:
+    return np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 4 / t).sum() / (4 * np.pi * t)
 
 
 def ls_moment(diag: list[np.ndarray]):
@@ -152,14 +175,14 @@ def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: fl
     return norm
 
 
-def frechet_mean(diagrams: list[np.ndarray], q: float = np.inf) -> np.ndarray:
-    diagrams = drop_inf(diagrams)
-    Y = diagrams[0]
+def frechet_mean(diag: list[np.ndarray], q: float = np.inf) -> np.ndarray:
+    diag = drop_inf(diag)
+    Y = diag[0]
     stop = False
     while not stop:
         k = len(Y)
         y = [None] * k
-        for i, d in enumerate(diagrams):
+        for i, d in enumerate(diag):
             diagXp, diagYp = d.mean(axis=1) / 2, Y.mean(axis=1) / 2
             dist = _dist_mat(Y, d, q)
             mat = _matching_alg(dist)[:k]
