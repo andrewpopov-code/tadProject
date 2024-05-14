@@ -9,7 +9,7 @@ from sklearn.cluster import KMeans
 
 from .homology import diagrams, drop_inf
 from .magnitude import magnitude
-from .entropy import entropy
+from .information import entropy
 from utils.math import beta1, beta1_intercept
 
 

@@ -2,8 +2,9 @@ import numpy as np
 from gph import ripser_parallel
 from gudhi.wasserstein.barycenter import lagrangian_barycenter
 from scipy.spatial import distance_matrix
-from .entropy import entropy
+from .information import entropy
 from utils.math import unique_points, inf_mask
+from utils.matching import matching_alg
 
 
 def diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool = False):
@@ -66,7 +67,7 @@ def amplitude(diag: list[np.ndarray], p: float) -> float:
     diag = np.vstack(drop_inf(diag))
     if p == np.inf:
         return np.max(diag[:, 1] - diag[:, 0]) / np.sqrt(2)
-    return np.power(total_persistence(diag, p), 1 / p) / np.sqrt(2)
+    return np.power(total_persistence([diag], p), 1 / p) / np.sqrt(2)
 
 
 def landscapes(diag: list[np.ndarray], n_points: int = 100) -> np.ndarray:
@@ -74,9 +75,6 @@ def landscapes(diag: list[np.ndarray], n_points: int = 100) -> np.ndarray:
     global_min, global_max = diag.min(), diag.max()
     steps = np.linspace(global_min, global_max, num=n_points, endpoint=True)
     ans = np.maximum(np.minimum(steps.reshape(-1, 1) - diag[:, 0], -steps.reshape(-1, 1) + diag[:, 1]), 0)
-    # f = ((diag[:, 0] <= steps.reshape(-1, 1)) & (diag.mean(axis=-1) > steps.reshape(-1, 1))) * (steps.reshape(-1, 1) - diag[:, 0])
-    # s = ((diag[:, 1] >= steps.reshape(-1, 1)) & (diag.mean(axis=-1) <= steps.reshape(-1, 1))) * (-steps.reshape(-1, 1) + diag[:, 1])
-    # return np.sort(f + s, axis=-1)[:, ::-1]
     return np.sort(ans, axis=-1)[:, ::-1]
 
 
@@ -93,7 +91,7 @@ def landscape_kernel(diagX: list[np.ndarray], diagY: list[np.ndarray], n_points:
 def scale_kernel(F: list[np.ndarray], G: list[np.ndarray], sigma: float) -> float:
     F, G = np.vstack(drop_inf(F)), np.vstack(drop_inf(G))
 
-    diff = np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 8 / sigma) - np.exp(-np.square(F - G.rehape(-1, 1, 2)[:, :, ::-1]).sum(dim=-1) / 8 / sigma)
+    diff = np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 8 / sigma) - np.exp(-np.square(F - G.reshape(-1, 1, 2)[:, :, ::-1]).sum(dim=-1) / 8 / sigma)
     return diff.sum() / (8 * np.pi * sigma)
 
 
@@ -164,7 +162,8 @@ def _dist_mat(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndarray:
 def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
     diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
-    mat = _matching_alg(_dist_mat(diagX, diagY, q))
+    # mat = _matching_alg(_dist_mat(diagX, diagY, q))
+    mat = matching_alg(_dist_mat(diagX, diagY, q))
     norm = np.linalg.norm(
         np.max(
             np.abs(np.vstack([diagX, diagXp])[mat] - np.vstack([diagY, diagYp])), axis=1
@@ -181,11 +180,12 @@ def frechet_mean(diag: list[np.ndarray], q: float = np.inf) -> np.ndarray:
     stop = False
     while not stop:
         k = len(Y)
-        y = [None] * k
+        y: list[np.ndarray] = [np.empty(0)] * k
         for i, d in enumerate(diag):
             diagXp, diagYp = d.mean(axis=1) / 2, Y.mean(axis=1) / 2
             dist = _dist_mat(Y, d, q)
-            mat = _matching_alg(dist)[:k]
+            # mat = _matching_alg(dist)[:k]
+            mat = matching_alg(dist)[:k]
             t = np.zeros_like(mat)
             for j in range(len(mat)):
                 t[mat[j]] = j
