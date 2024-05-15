@@ -11,11 +11,14 @@ def min_max_prod_torch(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return torch.max(torch.minimum(x.unsqueeze(-1), y.unsqueeze(0)), dim=-2).values
 
 
+def gromov_product(dist: np.ndarray, p: int) -> np.ndarray:
+    row, col = np.expand_dims(dist[p, :], axis=-1), np.expand_dims(d[:, p], axis=0)
+    return (row + col - dist) / 2
+
+
 def delta_hyperbolicity(X: np.ndarray, distances: bool = True) -> float:
-    p = 0
     d = X if distances else distance_matrix(X, X)
-    row, col = np.expand_dims(d[p, :], axis=-1), np.expand_dims(d[:, p], axis=0)
-    A = 0.5 * (row + col - d)
+    A = gromov_product(d, 0)
     maxmin = min_max_prod(A, A)
 
     return np.max(np.max(maxmin - A, axis=-1), axis=-1)
@@ -37,6 +40,29 @@ def mobius_addition(x: np.ndarray, y: np.ndarray, c: float) -> np.ndarray:
     return num / den
 
 
+def hyperbolic_distance(x: np.ndarray, y: np.ndarray, c: float) -> float:
+    return 2 * np.arctanh(np.sqrt(c) * np.linalg.norm(mobius_addition(-x, y, c))) / np.sqrt(c)
+
+
+def exponential_map(x: np.ndarray, c: float, v: np.ndarray) -> np.ndarray:
+    return mobius_addition(
+        x,
+        np.tanh(np.sqrt(c) * conformal(x, c) * np.linalg.norm(v) / 2) * v / np.sqrt(c) / np.linalg.norm(v),
+        c
+    )
+
+
+def logarithmic_map(x: np.ndarray, c: float, y: np.ndarray) -> np.ndarray:
+    ma = mobius_addition(-x, y, c)
+    norm = np.linalg.norm(ma)
+    return 2 * np.arctanh(np.sqrt(c) * norm) * ma / norm / np.sqrt(c) / conformal(x, c)
+
+
+def hyp_ave(X: np.ndarray, c: float) -> np.ndarray:
+    gamma = conformal(X, c)
+    return np.sum(gamma * X) / np.sum(gamma)
+
+
 def mobius_addition_torch(x: torch.Tensor, y: torch.Tensor, c: [torch.Tensor, float]) -> torch.Tensor:
     num = (1 + 2 * c * torch.sum(x * y, dim=-1) + c * torch.sum(y * y, dim=-1)) * x + (1 - c * torch.sum(x * x, dim=-1)) * y
     den = 1 + 2 * c * torch.sum(x * y, dim=-1) + c * c * torch.sum(y * y, dim=-1) * torch.sum(x * x, dim=-1)
@@ -44,8 +70,8 @@ def mobius_addition_torch(x: torch.Tensor, y: torch.Tensor, c: [torch.Tensor, fl
     return num / den
 
 
-def conformal(x: np.ndarray, c: float) -> np.ndarray:
-    return 2 / (1 - c * np.sum(x * x))
+def conformal(x: np.ndarray, c: float) -> [float, np.ndarray]:
+    return 2 / (1 - c * np.sum(x * x, axis=-1))
 
 
 def conformal_torch(x: torch.Tensor, c: [torch.Tensor, float]) -> torch.Tensor:

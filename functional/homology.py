@@ -3,7 +3,7 @@ from gph import ripser_parallel
 from gudhi.wasserstein.barycenter import lagrangian_barycenter
 from scipy.spatial import distance_matrix
 from .information import entropy
-from utils.math import unique_points, inf_mask
+from utils.math import unique_points, inf_mask, extended_distance
 from utils.matching import matching_alg
 
 
@@ -110,60 +110,11 @@ def pairwise_dist(bc: np.array):
     ]
 
 
-def _matching_alg(dist: np.ndarray) -> np.ndarray:
-    u, v, p, way = np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int)
-    for i in range(1, dist.shape[0] + 1):
-        p[0] = i
-        j0 = 0
-        minv, used = np.full(dist.shape[1] + 1, np.inf), np.full(dist.shape[1] + 1, False)
-        first = True
-        while p[j0] != 0 or first:
-            first = False
-            used[j0] = True
-            i0, d, j1 = p[j0], np.inf, None
-            for j in range(1, dist.shape[0] + 1):
-                if not used[j]:
-                    cur = dist[i0 - 1, j - 1] - u[i0] - v[j]
-                    if cur < minv[j]:
-                        minv[j] = cur
-                        way[j] = j0
-                    if minv[j] < d:
-                        d = minv[j]
-                        j1 = j
-            for j in range(1, dist.shape[1] + 1):
-                if used[j]:
-                    u[p[j]] += d
-                    v[j] -= d
-                else:
-                    minv[j] -= d
-            j0 = j1
-
-        first = True
-        while j0 or first:
-            first = False
-            j1 = way[j0]
-            p[j0] = p[j1]
-            j0 = j1
-
-    return p[1:] - 1
-
-
-def _dist_mat(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndarray:
-    diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
-    return np.power(np.block(
-        [
-            [np.max(np.abs(diagX.reshape(-1, 1, 2) - diagY), axis=-1),
-             np.max(np.abs(diagX.reshape(-1, 1, 2) - diagXp), axis=-1)],
-            [np.max(np.abs(diagYp.reshape(-1, 1, 2) - diagY), axis=-1), np.zeros((diagYp.shape[0], diagXp.shape[0]))]
-        ]
-    ), 1 if q == np.inf else q)  # (X1, ..., Xn, Y1', ..., Ym') x (Y1, ..., Ym, X1', ..., Xn')
-
-
 def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
     diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
     # mat = _matching_alg(_dist_mat(diagX, diagY, q))
-    mat = matching_alg(_dist_mat(diagX, diagY, q))
+    mat = matching_alg(extended_distance(diagX, diagY, q))
     norm = np.linalg.norm(
         np.max(
             np.abs(np.vstack([diagX, diagXp])[mat] - np.vstack([diagY, diagYp])), axis=1
@@ -183,7 +134,7 @@ def frechet_mean(diag: list[np.ndarray], q: float = np.inf) -> np.ndarray:
         y: list[np.ndarray] = [np.empty(0)] * k
         for i, d in enumerate(diag):
             diagXp, diagYp = d.mean(axis=1) / 2, Y.mean(axis=1) / 2
-            dist = _dist_mat(Y, d, q)
+            dist = extended_distance(Y, d, q)
             # mat = _matching_alg(dist)[:k]
             mat = matching_alg(dist)[:k]
             t = np.zeros_like(mat)

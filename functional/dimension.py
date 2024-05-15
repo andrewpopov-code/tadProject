@@ -8,9 +8,8 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 from .homology import diagrams, drop_inf
-from .magnitude import magnitude
 from .information import entropy
-from utils.math import beta1, beta1_intercept
+from utils.math import beta1, beta1_intercept, magnitude
 
 
 def information(X: np.ndarray):

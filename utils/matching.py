@@ -49,3 +49,41 @@ def matching_alg(C: np.ndarray):
                     if C[p[u], j] + a[p[u]] + b[j] < m[j]:
                         m[j] = C[p[u], j] + a[p[u]] + b[j]
                         mix[j] = p[u]
+
+
+def _matching_alg(dist: np.ndarray) -> np.ndarray:
+    u, v, p, way = np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int), np.zeros(dist.shape[0] + 1, dtype=int)
+    for i in range(1, dist.shape[0] + 1):
+        p[0] = i
+        j0 = 0
+        minv, used = np.full(dist.shape[1] + 1, np.inf), np.full(dist.shape[1] + 1, False)
+        first = True
+        while p[j0] != 0 or first:
+            first = False
+            used[j0] = True
+            i0, d, j1 = p[j0], np.inf, None
+            for j in range(1, dist.shape[0] + 1):
+                if not used[j]:
+                    cur = dist[i0 - 1, j - 1] - u[i0] - v[j]
+                    if cur < minv[j]:
+                        minv[j] = cur
+                        way[j] = j0
+                    if minv[j] < d:
+                        d = minv[j]
+                        j1 = j
+            for j in range(1, dist.shape[1] + 1):
+                if used[j]:
+                    u[p[j]] += d
+                    v[j] -= d
+                else:
+                    minv[j] -= d
+            j0 = j1
+
+        first = True
+        while j0 or first:
+            first = False
+            j1 = way[j0]
+            p[j0] = p[j1]
+            j0 = j1
+
+    return p[1:] - 1
