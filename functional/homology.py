@@ -149,6 +149,11 @@ def frechet_mean(diag: list[np.ndarray], q: float = np.inf) -> np.ndarray:
     return Y
 
 
+def frechet_variance(diag: list[np.ndarray], Y: np.ndarray = None, q: float = np.inf) -> float:
+    Y = Y or frechet_mean(diag, q)
+    return np.sum([np.square(wasserstein_distance([d], [Y], q)) for d in diag]) / (len(diag) - 1)
+
+
 def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
     X = unique_points(X)
     Y = unique_points(Y)

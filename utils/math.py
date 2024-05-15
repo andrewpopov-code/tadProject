@@ -120,7 +120,7 @@ def linear_kernel(x: np.ndarray, y: np.ndarray) -> float:
     return np.sum(x * y)
 
 
-def poly_kernel(x: np.ndarray, y: np.ndarray, eta: float, theta: float, d: float) -> float:
+def poly_kernel(x: np.ndarray, y: np.ndarray, theta: float, d: float) -> float:
     return np.power(np.sum(x * y) + theta, d)
 
 
