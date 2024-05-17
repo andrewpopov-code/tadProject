@@ -42,6 +42,10 @@ def betti(diag, n_bins: int = 100):
     return np.array(bc)
 
 
+def euler(bc: np.ndarray):
+    return bc[::2].sum(axis=-2) - bc[1::2].sum(axis=-2)
+
+
 def persistence_entropy(diag):
     diag = drop_inf(diag)
     L = persistence_norm(diag)
@@ -81,22 +85,6 @@ def landscapes(diag: list[np.ndarray], n_points: int = 100) -> np.ndarray:
 def landscape_norm(diag: list[np.ndarray], n_points: int = 100, p: float = np.inf) -> float:
     l = landscapes(drop_inf(diag), n_points)
     return np.linalg.norm(np.linalg.norm(l, p, axis=-1), p)
-
-
-def landscape_kernel(diagX: list[np.ndarray], diagY: list[np.ndarray], n_points: int = 100) -> float:
-    lX, lY = landscapes(drop_inf(diagX), n_points), landscapes(drop_inf(diagY), n_points)
-    return np.sqrt(np.square(lX - lY).sum())
-
-
-def scale_kernel(F: list[np.ndarray], G: list[np.ndarray], sigma: float) -> float:
-    F, G = np.vstack(drop_inf(F)), np.vstack(drop_inf(G))
-
-    diff = np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 8 / sigma) - np.exp(-np.square(F - G.reshape(-1, 1, 2)[:, :, ::-1]).sum(dim=-1) / 8 / sigma)
-    return diff.sum() / (8 * np.pi * sigma)
-
-
-def heat_kernel(F: np.ndarray, G: np.ndarray, t: float) -> float:
-    return np.exp(-np.square(distance_matrix(F, G)).sum(dim=-1) / 4 / t).sum() / (4 * np.pi * t)
 
 
 def ls_moment(diag: list[np.ndarray]):

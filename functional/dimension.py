@@ -46,11 +46,11 @@ def corr(X: np.ndarray):
     return corrq(X, 1)
 
 
-def mle(X: np.ndarray, k: int = 5):
-    nn = NearestNeighbors(n_neighbors=k).fit(X)
-    distances, _ = nn.kneighbors()
+def mle(X: np.ndarray, k: int = 5, distances: bool = False):
+    nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, _ = nn.kneighbors()
 
-    return (k - 1) / np.log(np.expand_dims(distances[:, -1], 1) / distances).sum(axis=-1)
+    return (k - 1) / np.log(np.expand_dims(dist[:, -1], 1) / dist).sum(axis=-1)
 
 
 def mm(X: np.ndarray, k: int = 5):

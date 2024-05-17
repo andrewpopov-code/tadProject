@@ -28,11 +28,6 @@ def dmi(prob: np.ndarray, classes: np.ndarray, n: int):
     return -np.log(np.linalg.det(O @ L))
 
 
-def multinomial_kernel(P: np.ndarray, Q: np.ndarray, t: float) -> float:
-    d = P.size - 1
-    return np.power(4 * np.pi * t, -d / 2) * np.exp(-np.square(np.arccos(np.sqrt(P * Q).sum())) / t)
-
-
 def multinomial_geodesic(P: np.ndarray, Q: np.ndarray) -> float:
     return 2 * np.arccos(np.sqrt(P * Q).sum())
 

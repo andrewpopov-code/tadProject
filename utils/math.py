@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from scipy.spatial import distance_matrix
-from scipy.special import gamma, jv
+from scipy.special import gamma
 
 
 def image_to_cloud(X: np.ndarray, channel_first: bool = False):
@@ -99,35 +99,6 @@ def set_ops(X: torch.Tensor, Y: torch.Tensor) -> tuple:
     return union, intersection, delta, diffX, diffY
 
 
-def bessel_kernel2(F: np.ndarray, G: np.ndarray) -> float:
-    n = F.shape[1]
-    k0 = np.power(np.pi, n / 2) / gamma(n / 2 + 1)
-    return np.exp(-2 * np.pi * np.square(distance_matrix(F, G) / np.sqrt(2 * n))) * k0
-
-
-def bessel_kernel3(F: np.ndarray, G: np.ndarray, c: float = 2) -> float:
-    n = F.shape[1]
-    r = distance_matrix(F, G)
-    return np.power(c / 2, n / 2) * jv(n / 2, np.pi * c * r) / np.power(r, n / 2)
-
-
-def bessel_kernel(x: np.ndarray, y: np.ndarray, v: float) -> float:
-    norm = np.linalg.norm(x - y)
-    return np.power(2 / norm, v) * gamma(v + 1) * jv(v, norm)
-
-
-def linear_kernel(x: np.ndarray, y: np.ndarray) -> float:
-    return np.sum(x * y)
-
-
-def poly_kernel(x: np.ndarray, y: np.ndarray, theta: float, d: float) -> float:
-    return np.power(np.sum(x * y) + theta, d)
-
-
-def sigmoid_kernel(x: np.ndarray, y: np.ndarray, eta: float, theta: float) -> float:
-    return np.tanh(eta * np.sum(x * y) + theta)
-
-
 def magnitude(d: np.ndarray):
     d = np.exp(-d)
     return np.linalg.inv(d).sum()
@@ -142,3 +113,7 @@ def extended_distance(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndar
             [np.max(np.abs(diagYp.reshape(-1, 1, 2) - diagY), axis=-1), np.zeros((diagYp.shape[0], diagXp.shape[0]))]
         ]
     ), 1 if q == np.inf else q)  # (X1, ..., Xn, Y1', ..., Ym') x (Y1, ..., Ym, X1', ..., Xn')
+
+
+def unit_ball_volume(n: float) -> float:
+    return np.sqrt(np.power(np.pi, n)) / gamma(n / 2 + 1)
