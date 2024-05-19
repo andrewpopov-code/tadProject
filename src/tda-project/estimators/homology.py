@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import BaseEstimator
-from functional.homology import diagrams, betti, persistence_entropy, persistence_norm, mtd, rtd, cross_barcode, r_cross_barcode, pairwise_dist
+from src.functional.homology import diagrams, betti, persistence_entropy, persistence_norm, mtd, rtd, cross_barcode, r_cross_barcode, pairwise_dist
 
 
 class Barcode(BaseEstimator):

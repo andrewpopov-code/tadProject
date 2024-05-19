@@ -3,7 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from estimators.entropy import EntropyEstimator
+from src.estimators import EntropyEstimator
 
 
 class Entropy(IntrinsicModule):

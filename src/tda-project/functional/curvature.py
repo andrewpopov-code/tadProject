@@ -3,7 +3,7 @@ from sklearn.neighbors import NearestNeighbors
 
 from .dimension import mle
 from .kernel import gaussian_kernel_one
-from utils.math import unit_ball_volume, mle_aggregate
+from src.utils.math import unit_ball_volume, mle_aggregate
 
 
 def density(X: np.ndarray, k: int, dim: float, distances: bool = False) -> np.ndarray:

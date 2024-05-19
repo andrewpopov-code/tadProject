@@ -4,8 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from estimators.dimension import DimensionEstimator
-from utils.math import image_to_cloud, unique_points
+from src.estimators.dimension import DimensionEstimator
+from src.utils.math import image_to_cloud, unique_points
 
 
 class Dimension(IntrinsicModule):

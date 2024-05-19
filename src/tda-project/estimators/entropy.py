@@ -1,6 +1,6 @@
 import numpy as np
 from .base import BaseEstimator
-from functional.information import entropy
+from src.functional.information import entropy
 
 
 class EntropyEstimator(BaseEstimator):

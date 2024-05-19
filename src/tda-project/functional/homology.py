@@ -3,8 +3,8 @@ from gph import ripser_parallel
 from gudhi.wasserstein.barycenter import lagrangian_barycenter
 from scipy.spatial import distance_matrix
 from .information import entropy
-from utils.math import unique_points, inf_mask, extended_distance
-from utils.matching import matching_alg
+from src.utils.math import unique_points, inf_mask, extended_distance
+from src.utils.matching import matching_alg
 
 
 def diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool = False):

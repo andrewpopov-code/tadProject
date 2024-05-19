@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils.math import neighbors
+from src.utils.math import neighbors
 
 
 def mle(distances: torch.Tensor):

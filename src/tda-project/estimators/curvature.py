@@ -3,8 +3,8 @@ from sklearn.neighbors import NearestNeighbors
 
 from .base import BaseEstimator
 from .dimension import DimensionEstimator
-from functional.kernel import gaussian_kernel_one
-from utils.math import unit_ball_volume, mle_aggregate
+from src.functional.kernel import gaussian_kernel_one
+from src.utils.math import unit_ball_volume, mle_aggregate
 
 
 class CurvatureEstimator(BaseEstimator):

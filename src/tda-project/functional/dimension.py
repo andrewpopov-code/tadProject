@@ -11,7 +11,7 @@ from sklearn.cluster import KMeans
 from .magnitude import magnitude
 from .homology import diagrams, drop_inf
 from .information import entropy
-from utils.math import beta1, beta1_intercept
+from src.utils.math import beta1, beta1_intercept
 
 
 def information(X: np.ndarray):  # FIXME

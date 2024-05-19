@@ -1,7 +1,7 @@
 import numpy as np
 from .base import BaseEstimator
-from functional.delta import delta_hyperbolicity
-from utils.math import compute_unique_distances
+from src.functional.delta import delta_hyperbolicity
+from src.utils.math import compute_unique_distances
 
 
 class DeltaHyperbolicity(BaseEstimator):

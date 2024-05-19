@@ -1,6 +1,6 @@
 import torch
 from .vr import VietorisRips
-from utils.math import batch_select, neighbors, set_ops
+from src.utils.math import batch_select, neighbors, set_ops
 
 
 def pq_loss(dgms_tensorXb: torch.Tensor, dgms_tensorXd: torch.Tensor, left: float, right: float):

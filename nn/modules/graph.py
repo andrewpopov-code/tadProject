@@ -6,8 +6,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from nn.modules.module import IntrinsicModule
 from ..base import IntrinsicBase
-from utils.math import compute_unique_distances
-from utils.tensorboard import show_results_ricci
+from src.utils.math import compute_unique_distances
+from src.utils.tensorboard import show_results_ricci
 
 
 class Curvature(IntrinsicModule):

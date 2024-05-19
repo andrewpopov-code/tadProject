@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 from .vr import VietorisRips
-from functional.homology import drop_inf
+from src.functional import drop_inf
 
 
 class BettiLossFunction(torch.autograd.Function):

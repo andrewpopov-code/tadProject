@@ -50,7 +50,7 @@ def plot_persistence_pdf(dgm: list[np.ndarray]) -> plt.Figure:
     l: list[np.ndarray] = [dgm[i][1] - dgm[i][0] for i in range(len(dgm))]
     fig, axes = plt.subplots(1, len(dgm))
     for i in range(len(dgm)):
-        axes[i].plot(np.cumsum(l[i].sort()) / np.sum(l[i]))
+        axes[i].plot(np.cumsum(np.sort(l[i])) / np.sum(l[i]))
         axes[i].set_title(f'H{i}')
     return fig
 

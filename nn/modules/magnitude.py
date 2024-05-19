@@ -3,7 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .module import IntrinsicModule
 from .base import IntrinsicBase
-from utils.math import compute_unique_distances, magnitude
+from src.utils.math import compute_unique_distances, magnitude
 
 
 class Magnitude(IntrinsicModule):

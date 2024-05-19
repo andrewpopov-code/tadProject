@@ -1,5 +1,4 @@
 from .base import BaseEstimator
-from functional.dimension import *
 
 
 class DimensionEstimator(BaseEstimator):

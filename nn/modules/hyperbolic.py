@@ -8,8 +8,8 @@ import math
 
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from utils.math import image_to_cloud, compute_unique_distances
-from functional.delta import delta_hyperbolicity_torch, delta_hyperbolicity, mobius_addition_torch, conformal_torch
+from src.utils.math import image_to_cloud, compute_unique_distances
+from src.functional.delta import delta_hyperbolicity_torch, delta_hyperbolicity, mobius_addition_torch, conformal_torch
 
 
 class DeltaHyperbolicity(IntrinsicModule):

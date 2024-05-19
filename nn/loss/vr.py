@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 from torch.nn.functional import normalize
-from functional.homology import diagrams
-from utils.math import diagrams_to_tensor, gens_to_tensor, boundary_matrix, batch_select
+from src.functional import diagrams
+from src.utils.math import diagrams_to_tensor, gens_to_tensor, boundary_matrix, batch_select
 
 
 def filtration_return(ret: list):
