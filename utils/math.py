@@ -99,11 +99,6 @@ def set_ops(X: torch.Tensor, Y: torch.Tensor) -> tuple:
     return union, intersection, delta, diffX, diffY
 
 
-def magnitude(d: np.ndarray):
-    d = np.exp(-d)
-    return np.linalg.inv(d).sum()
-
-
 def extended_distance(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndarray:
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
     return np.power(np.block(

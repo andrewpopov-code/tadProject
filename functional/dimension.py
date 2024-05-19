@@ -1,18 +1,20 @@
 import numpy as np
 
 from scipy.spatial.distance import pdist
+from scipy.spatial import distance_matrix
 
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
+from .magnitude import magnitude
 from .homology import diagrams, drop_inf
 from .information import entropy
-from utils.math import beta1, beta1_intercept, magnitude
+from utils.math import beta1, beta1_intercept
 
 
-def information(X: np.ndarray):
+def information(X: np.ndarray):  # FIXME
     X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
     d = pdist(X)
     d.sort()
@@ -23,7 +25,7 @@ def information(X: np.ndarray):
     return np.abs(beta1(np.log2(d), s))
 
 
-def information_renyi(X: np.ndarray, q: float):
+def information_renyi(X: np.ndarray, q: float):  # FIXME
     X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
     d = pdist(X)
     d.sort()
@@ -34,7 +36,7 @@ def information_renyi(X: np.ndarray, q: float):
     return np.abs(beta1(np.log(d), s) / (q - 1))
 
 
-def corrq(X: np.ndarray, q: float):
+def corrq(X: np.ndarray, q: float):  # FIXME
     X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
     d = pdist(X)
     d.sort()
@@ -53,26 +55,26 @@ def mle(X: np.ndarray, k: int = 5, distances: bool = False):
     return (k - 1) / np.log(np.expand_dims(dist[:, -1], 1) / dist).sum(axis=-1)
 
 
-def mm(X: np.ndarray, k: int = 5):
-    nn = NearestNeighbors(n_neighbors=k).fit(X)
-    distances, _ = nn.kneighbors()
+def mm(X: np.ndarray, k: int = 5, distances: bool = False):
+    nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, _ = nn.kneighbors()
 
-    Tk = distances[:, -1]
-    T = distances.mean(axis=1)
+    Tk = dist[:, -1]
+    T = dist.mean(axis=1)
     return T / (Tk - T)
 
 
-def ols(X: np.ndarray, k: int = 5, slope_estimator=LinearRegression):
-    nn = NearestNeighbors(n_neighbors=k).fit(X)
-    distances, _ = nn.kneighbors()
+def ols(X: np.ndarray, k: int = 5, slope_estimator=LinearRegression, distances: bool = False):
+    nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, _ = nn.kneighbors()
 
-    y = np.zeros_like(distances)
+    y = np.zeros_like(dist)
     for i in range(k):
-        y[:, i] = distances[:, i] * (distances == distances[:, i].reshape(-1, 1)).sum(axis=-1) / (i + 1)
+        y[:, i] = dist[:, i] * (dist == dist[:, i].reshape(-1, 1)).sum(axis=-1) / (i + 1)
 
     d = np.zeros(X.shape[0])
     for i in range(X.shape[0]):
-        lr = slope_estimator(fit_intercept=False).fit(distances[i].reshape(-1, 1), y[i].reshape(-1, 1))
+        lr = slope_estimator(fit_intercept=False).fit(dist[i].reshape(-1, 1), y[i].reshape(-1, 1))
         d[i] = lr.coef_[0, 0]
 
     return d
@@ -102,25 +104,27 @@ def local_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):
     return np.array([pca(X[ix[i]], explained_variance) for i in range(X.shape[0])])
 
 
-def two_nn(X: np.ndarray):
+def two_nn(X: np.ndarray, distances: bool = False):
     n = X.shape[0]
-    nn = NearestNeighbors(n_neighbors=2).fit(X)
-    distances, _ = nn.kneighbors()
-    return beta1(np.log(np.sort(distances[:, 1] / distances[:, 0])), -np.log(1 - np.linspace(0, 1 - 1/n, n)))
+    nn = NearestNeighbors(n_neighbors=2, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, _ = nn.kneighbors()
+    return beta1(np.log(np.sort(dist[:, 1] / dist[:, 0])), -np.log(1 - np.linspace(0, 1 - 1 / n, n)))
 
 
-def persistence(X: np.ndarray, p: float = 1):
+def persistence(X: np.ndarray, p: float = 1, distances: bool = False):
     n = np.arange(1, X.shape[0] + 1, X.shape[0] // 10)
     e = np.zeros(n.size)
     for i, ni in enumerate(n):
-        dgms = drop_inf(diagrams(X[:ni])[0])
+        dgms = drop_inf(diagrams(X[:ni, :ni], distances=True)[0]) if distances else drop_inf(diagrams(X[:ni])[0])
         e[i] = np.power(dgms[1] - dgms[0], p).sum()
     m = beta1(np.log(n), np.log(e))
     return p / (1 - m)
 
 
-def magnitude_reg(X: np.ndarray, t: np.ndarray, i: int = None, j: int = None):
+def magnitude_reg(X: np.ndarray, t: np.ndarray, i: int = None, j: int = None, distances: bool = False):
     m = np.zeros_like(t)
+    if not distances:
+        X = distance_matrix(X, X)
     for i in range(t.shape[0]):
         m[i] = magnitude(t[i] * X)
     i, j = i or 0, j or t.shape[0]

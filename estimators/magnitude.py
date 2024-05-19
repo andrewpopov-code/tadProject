@@ -1,7 +1,8 @@
 import numpy as np
 
 from .base import BaseEstimator
-from utils.math import compute_unique_distances, magnitude
+from utils.math import compute_unique_distances
+from functional.magnitude import magnitude
 
 
 class MagnitudeEstimator(BaseEstimator):

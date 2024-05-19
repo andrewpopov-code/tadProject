@@ -85,3 +85,17 @@ def plot_dimension(dim: list[np.ndarray], columns: list[str]) -> plt.Figure:
     :return: figure with the pairwise comparison chart
     """
     return sns.pairplot(pd.DataFrame(dim, columns=columns).T, diag_kind='hist').figure
+
+
+def plot_andrews(X: np.ndarray, ax: plt.Axes = None, c: str = 'b', pts: int = 100) -> plt.Figure:
+    d = X.shape[1]
+    v = np.zeros((2 * d + 1, pts))
+    v[0, :] = 1 / np.sqrt(2)
+    t = np.linspace(-np.pi, np.pi, endpoint=True, num=pts)
+    v[1::2, :] = np.sin(np.arange(d).reshape(-1, 1) * t)
+    v[2::2, :] = np.cos(np.arange(d).reshape(-1, 1) * t)
+    y = X @ v[:d]  # d x pts, X - n x d
+
+    ax = ax or plt.figure()
+    ax.plot(*[x for p in zip([t] * X.shape[0], y) for x in p], c=c)
+    return ax
