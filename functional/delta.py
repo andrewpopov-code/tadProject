@@ -12,11 +12,11 @@ def min_max_prod_torch(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 
 def gromov_product(dist: np.ndarray, p: int) -> np.ndarray:
-    row, col = np.expand_dims(dist[p, :], axis=-1), np.expand_dims(d[:, p], axis=0)
+    row, col = np.expand_dims(dist[p, :], axis=-1), np.expand_dims(dist[:, p], axis=0)
     return (row + col - dist) / 2
 
 
-def delta_hyperbolicity(X: np.ndarray, distances: bool = True) -> float:
+def delta_hyperbolicity(X: np.ndarray, distances: bool = False) -> float:
     d = X if distances else distance_matrix(X, X)
     A = gromov_product(d, 0)
     maxmin = min_max_prod(A, A)
@@ -24,7 +24,7 @@ def delta_hyperbolicity(X: np.ndarray, distances: bool = True) -> float:
     return np.max(np.max(maxmin - A, axis=-1), axis=-1)
 
 
-def delta_hyperbolicity_torch(x: torch.Tensor, distances: bool = True) -> torch.Tensor:
+def delta_hyperbolicity_torch(x: torch.Tensor, distances: bool = False) -> torch.Tensor:
     p = 0
     d = x if distances else torch.cdist(x, x)
     row, col = d[:, p, :].unsqueeze(0), d[:, :, p].unsqueeze(-1)

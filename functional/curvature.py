@@ -10,7 +10,7 @@ def density(X: np.ndarray, k: int, dim: float, distances: bool = False) -> np.nd
     nn = NearestNeighbors(n_neighbors=k, metric='precomputed'if distances else 'minkowski').fit(X)
     dist, _ = nn.kneighbors()
     h = np.power(np.arange(1, k + 1), -1 / (dim + 4))
-    return 1 / np.power(h, k) / k * gaussian_kernel_one(dist / h, dim, 1) / k
+    return np.sum(1 / np.power(h, k) / k * gaussian_kernel_one(dist / h, dim, 1) / k, axis=-1)
 
 
 def mean_density(X: np.ndarray, k: int, dim: float, distances: bool = False) -> np.ndarray:

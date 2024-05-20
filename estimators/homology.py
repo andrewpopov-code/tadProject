@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import BaseEstimator
-from functional.homology import diagrams, betti, persistence_entropy, persistence_norm, mtd, rtd, cross_barcode, r_cross_barcode, pairwise_dist
+from functional.homology import diagrams, betti, persistence_entropy, total_persistence
 
 
 class Barcode(BaseEstimator):
@@ -11,43 +11,7 @@ class Barcode(BaseEstimator):
         self.treat_as_distances = treat_as_distances
 
     def fit_transform(self, X: np.ndarray, y=None):
-        return diagrams(X, maxdim=self.maxdim, distances=self.treat_as_distances)
-
-
-class CrossBarcode(BaseEstimator):
-    def __init__(self, maxdim: int = 1):
-        super().__init__()
-        self.maxdim = maxdim
-
-    def fit_transform(self, X: np.ndarray, y: np.ndarray):
-        return cross_barcode(X, y, maxdim=self.maxdim)
-
-
-class RCrossBarcode(BaseEstimator):
-    def __init__(self, maxdim: int = 1):
-        super().__init__()
-        self.maxdim = maxdim
-
-    def fit_transform(self, X: np.ndarray, y: np.ndarray):
-        return r_cross_barcode(X, y, maxdim=self.maxdim)
-
-
-class MTD(BaseEstimator):
-    def __init__(self, maxdim: int = 1):
-        super().__init__()
-        self.maxdim = maxdim
-
-    def fit_transform(self, X: np.ndarray, y: np.ndarray):
-        return mtd(X, y, maxdim=self.maxdim)
-
-
-class RTD(BaseEstimator):
-    def __init__(self, maxdim: int = 1):
-        super().__init__()
-        self.maxdim = maxdim
-
-    def fit_transform(self, X: np.ndarray, y: np.ndarray):
-        return rtd(X, y, maxdim=self.maxdim)
+        return [diagrams(X[b], maxdim=self.maxdim, distances=self.treat_as_distances) for b in range(X.shape[0])]
 
 
 class BettiCurves(BaseEstimator):
@@ -55,31 +19,22 @@ class BettiCurves(BaseEstimator):
         super().__init__()
         self.n_bins = n_bins
 
-    def fit_transform(self, X: np.ndarray, y=None):
-        return betti(X, n_bins=self.n_bins)
-
-
-class BettiDistance(BaseEstimator):
-    def __init__(self, n_bins: int = 100):
-        super().__init__()
-        self.n_bins = n_bins
-
-    def fit_transform(self, X: list[np.ndarray], y=None):
-        bX = [betti(X[b], n_bins=self.n_bins) for b in range(len(X))]
-        return pairwise_dist(bX)
+    def fit_transform(self, X: list[list[np.ndarray]], y=None):
+        return np.array([betti(X[b], n_bins=self.n_bins) for b in range(len(X))])
 
 
 class PersistenceEntropy(BaseEstimator):
     def __init__(self):
         super().__init__()
 
-    def fit_transform(self, X, y=None):
-        return persistence_entropy(X)
+    def fit_transform(self, X: list[list[np.ndarray]], y=None):
+        return np.array([persistence_entropy(X[b]) for b in range(len(X))])
 
 
-class PersistenceNorm(BaseEstimator):
-    def __init__(self):
+class TotalPersistence(BaseEstimator):
+    def __init__(self, q: float = 1):
         super().__init__()
+        self.q = q
 
-    def fit_transform(self, X, y=None):
-        return persistence_norm(X)
+    def fit_transform(self, X: list[list[np.ndarray]], y=None):
+        return np.array([total_persistence(X[b], self.q) for b in range(len(X))])

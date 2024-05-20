@@ -18,7 +18,7 @@ def drop_inf(diag: list[np.ndarray]) -> list[np.ndarray]:
     for dim in range(len(diag)):
         mask = inf_mask(diag[dim])
         if mask.shape:
-            diag[dim] = diag[dim][~mask.any(axis=1)]
+            diag[dim] = diag[dim][~mask.any(axis=1)].reshape(-1, 2)
     return diag
 
 

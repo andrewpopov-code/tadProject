@@ -14,38 +14,40 @@ from .information import entropy
 from utils.math import beta1, beta1_intercept
 
 
-def information(X: np.ndarray):  # FIXME
-    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+def information(X: np.ndarray):
     d = pdist(X)
     d.sort()
+
     s = np.zeros_like(d)
     for i in range(d.shape[0]):
-        flat = np.histogramdd(X, bins=int(np.ceil(2 / d[i])))[0].reshape(-1)
+        flat = np.histogramdd(X, bins=int(np.ceil(d[-1] / d[i])))[0].reshape(-1)
         s[i] = -entropy(flat[flat > 0] / flat.sum(), np.log2)
-    return np.abs(beta1(np.log2(d), s))
+    return np.abs(beta1_intercept(np.log2(d), s))
 
 
-def information_renyi(X: np.ndarray, q: float):  # FIXME
-    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+def information_renyi(X: np.ndarray, q: float):
     d = pdist(X)
     d.sort()
     s = np.zeros_like(d)
     for i in range(d.shape[0]):
-        flat = np.histogramdd(X, bins=int(np.ceil(2 / d[i])))[0].reshape(-1)
+        flat = np.histogramdd(X, bins=int(np.ceil(d[-1] / d[i])))[0].reshape(-1)
         s[i] = np.log(np.power(flat[flat > 0] / flat.sum(), q).sum())
-    return np.abs(beta1(np.log(d), s) / (q - 1))
+    return np.abs(beta1_intercept(np.log(d), s) / (q - 1))
 
 
-def corrq(X: np.ndarray, q: float):  # FIXME
-    X = (X - X.mean(axis=-2)) / (X.max(axis=-2) - X.min(axis=-2))
+def corrq(X: np.ndarray, q: float):
     d = pdist(X)
     d.sort()
     g = np.power(np.power(2 * np.arange(1, d.shape[0] + 1) / (X.shape[0] - 1), q - 1) / X.shape[0], 1 / (q - 1))
-    return np.abs(beta1(np.log(d), np.log(g)))
+
+    return np.abs(beta1_intercept(np.log(d), np.log(g)))
 
 
 def corr(X: np.ndarray):
-    return corrq(X, 1)
+    d = pdist(X)
+    d.sort()
+    c = 2 * np.arange(1, d.shape[0] + 1) / (X.shape[0] - 1) / X.shape[0]
+    return np.abs(beta1_intercept(np.log(d), np.log(c)))
 
 
 def mle(X: np.ndarray, k: int = 5, distances: bool = False):
@@ -86,9 +88,9 @@ def pca_sklearn(X: np.ndarray, explained_variance: float = 0.95):
 
 def pca(X: np.ndarray, explained_variance: float = 0.95):
     X -= X.mean(axis=-2)
-    S = np.linalg.svd(X, compute_uv=False)
-    S /= np.square(X).sum()
-    return S.size - np.sum(S.cumsum() >= explained_variance) + 1
+    S = np.square(np.linalg.svd(X, compute_uv=False))
+    S /= S.sum()
+    return np.searchsorted(np.cumsum(S), explained_variance, side="right") + 1
 
 
 def cluster_pca(X: np.ndarray, k: int = 5, explained_variance: float = 0.95):
@@ -111,13 +113,13 @@ def two_nn(X: np.ndarray, distances: bool = False):
     return beta1(np.log(np.sort(dist[:, 1] / dist[:, 0])), -np.log(1 - np.linspace(0, 1 - 1 / n, n)))
 
 
-def persistence(X: np.ndarray, p: float = 1, distances: bool = False):
-    n = np.arange(1, X.shape[0] + 1, X.shape[0] // 10)
+def persistence(X: np.ndarray, h_dim: int = 0, p: float = 1, distances: bool = False):
+    n = np.arange(2, X.shape[0] + 1, X.shape[0] // 10)
     e = np.zeros(n.size)
     for i, ni in enumerate(n):
-        dgms = drop_inf(diagrams(X[:ni, :ni], distances=True)[0]) if distances else drop_inf(diagrams(X[:ni])[0])
-        e[i] = np.power(dgms[1] - dgms[0], p).sum()
-    m = beta1(np.log(n), np.log(e))
+        dgms = drop_inf(diagrams(X[:ni, :ni], distances=True))[h_dim] if distances else drop_inf(diagrams(X[:ni]))[h_dim]
+        e[i] = np.power(dgms[:, 1] - dgms[:, 0], p).sum()
+    m = beta1_intercept(np.log(n), np.log(e))
     return p / (1 - m)
 
 
