@@ -1,4 +1,5 @@
 import numpy as np
+from utils.matching import matching_alg
 
 
 def entropy(prob: np.ndarray, logarithm):
@@ -38,6 +39,12 @@ def hellinger(P: np.ndarray, Q: np.ndarray) -> float:
 
 def total_distance(P: np.ndarray, Q: np.ndarray) -> float:
     return np.abs(P - Q).sum() / 2
+
+
+def wasserstein_distance(P: np.ndarray, Q: np.ndarray, q: float) -> float:
+    dist = np.power(np.abs(P.reshape(-1, 1) - Q), q)
+    mat = matching_alg(dist)
+    return np.power(dist[mat, :].sum(), 1 / q)
 
 
 def bhatta_distance(P: np.ndarray, Q: np.ndarray) -> float:

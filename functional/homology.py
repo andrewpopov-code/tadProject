@@ -101,7 +101,6 @@ def pairwise_dist(bc: np.array):
 def wasserstein_distance(diagX: list[np.ndarray], diagY: list[np.ndarray], q: float = np.inf, matching: bool = False) -> [tuple[float, np.ndarray], float]:
     diagX, diagY = np.vstack(drop_inf(diagX)), np.vstack(drop_inf(diagY))
     diagXp, diagYp = diagX.mean(axis=1) / 2, diagY.mean(axis=1) / 2
-    # mat = _matching_alg(_dist_mat(diagX, diagY, q))
     mat = matching_alg(extended_distance(diagX, diagY, q))
     norm = np.linalg.norm(
         np.max(

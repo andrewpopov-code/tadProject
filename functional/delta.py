@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from scipy.spatial import distance_matrix
+from scipy.spatial.distance import pdist
 
 
 def min_max_prod(A: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -16,12 +17,18 @@ def gromov_product(dist: np.ndarray, p: int) -> np.ndarray:
     return (row + col - dist) / 2
 
 
-def delta_hyperbolicity(X: np.ndarray, distances: bool = False) -> float:
+def delta_hyperbolicity(X: np.ndarray, distances: bool = False, p: int = 0) -> float:
     d = X if distances else distance_matrix(X, X)
-    A = gromov_product(d, 0)
+    A = gromov_product(d, p)
     maxmin = min_max_prod(A, A)
 
     return np.max(np.max(maxmin - A, axis=-1), axis=-1)
+
+
+def relative_delta_hyperbolicity(X: np.ndarray, distances: bool = False) -> float:
+    d = delta_hyperbolicity(X, distances)
+    diam = X.max() if distances else pdist(X).max()
+    return d / diam
 
 
 def delta_hyperbolicity_torch(x: torch.Tensor, distances: bool = False) -> torch.Tensor:
@@ -76,3 +83,11 @@ def conformal(x: np.ndarray, c: float) -> [float, np.ndarray]:
 
 def conformal_torch(x: torch.Tensor, c: [torch.Tensor, float]) -> torch.Tensor:
     return 2 / (1 - c * torch.sum(x * x, dim=-1))
+
+
+def c(x: np.ndarray, distances: bool = False):
+    return np.square(0.144 / delta_hyperbolicity(x, distances))
+
+
+def c_torch(x: torch.Tensor, distances: bool = False):
+    return torch.square(0.144 / delta_hyperbolicity_torch(x, distances))

@@ -42,20 +42,16 @@ class DeltaHyperbolicity(IntrinsicModule):
 
 
 class Linear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, c: float = None):
+    def __init__(self, in_features: int, out_features: int, c: float):
         super().__init__()
         self.linear = nn.Linear(in_features, out_features, bias=False)
         self._c = c
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         mx = self.linear(x)
-        c = self.c(x)
         return torch.tanh(
-            mx.norm() / x.norm() * torch.atanh(torch.sqrt(c * x.norm()))
-        ) * normalize(mx) / torch.sqrt(c)
-
-    def c(self, x: torch.Tensor = None) -> torch.Tensor:
-        return self._c or torch.square(0.144 / delta_hyperbolicity_torch(x))
+            mx.norm() / x.norm() * torch.atanh(torch.sqrt(self._c * x.norm()))
+        ) * normalize(mx) / torch.sqrt(self._c)
 
 
 class Concat(nn.Module):
