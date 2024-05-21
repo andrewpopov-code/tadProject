@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 from .magnitude import magnitude
-from .homology import diagrams, drop_inf
+from .homology import vr_diagrams, drop_inf
 from .information import entropy
 from utils.math import beta1, beta1_intercept
 
@@ -117,7 +117,7 @@ def persistence(X: np.ndarray, h_dim: int = 0, p: float = 1, distances: bool = F
     n = np.arange(2, X.shape[0] + 1, X.shape[0] // 10)
     e = np.zeros(n.size)
     for i, ni in enumerate(n):
-        dgms = drop_inf(diagrams(X[:ni, :ni], distances=True))[h_dim] if distances else drop_inf(diagrams(X[:ni]))[h_dim]
+        dgms = drop_inf(vr_diagrams(X[:ni, :ni], distances=True))[h_dim] if distances else drop_inf(vr_diagrams(X[:ni]))[h_dim]
         e[i] = np.power(dgms[:, 1] - dgms[:, 0], p).sum()
     m = beta1_intercept(np.log(n), np.log(e))
     return p / (1 - m)

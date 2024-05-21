@@ -8,7 +8,7 @@ from utils.math import unique_points
 from utils.tensorboard import draw_heatmap, plot_persistence, plot_persistence_each, plot_betti_each
 from .base import IntrinsicBase
 from .module import IntrinsicModule
-from functional.homology import diagrams, diagrams_barycenter, betti, persistence_norm, persistence_entropy, pairwise_dist, mtd, rtd
+from functional.homology import vr_diagrams, diagrams_barycenter, betti, persistence_norm, persistence_entropy, pairwise_dist, mtd, rtd
 
 
 @dataclass
@@ -38,9 +38,9 @@ class Persistence(IntrinsicModule):
         pi, bc, pe, norm = [], [], [], []
         for b in range(x.shape[0]):
             if distances:
-                pi.append(diagrams(x[b].numpy(force=True), maxdim=self.maxdim, distances=True))
+                pi.append(vr_diagrams(x[b].numpy(force=True), maxdim=self.maxdim, distances=True))
             else:
-                pi.append(diagrams(unique_points(x[b].numpy(force=True)), maxdim=self.maxdim, distances=False))
+                pi.append(vr_diagrams(unique_points(x[b].numpy(force=True)), maxdim=self.maxdim, distances=False))
             bc.append(betti(pi[-1]))
             pe.append(persistence_entropy(pi[-1]))
             norm.append(persistence_norm(pi[-1]))

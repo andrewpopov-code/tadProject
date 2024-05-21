@@ -67,11 +67,11 @@ def boundary_matrix(gens: np.ndarray, x: np.ndarray):
     return np.logical_or.reduce(gens.reshape(*gens.shape, 1) == x.reshape(1, -1), axis=-2).astype(int)
 
 
-def beta1(x: np.ndarray, y: np.ndarray):
+def beta1(x: np.ndarray, y: np.ndarray) -> float:
     return np.sum(x*y) / np.square(x).sum()
 
 
-def beta1_intercept(x: np.ndarray, y: np.ndarray):
+def beta1_intercept(x: np.ndarray, y: np.ndarray) -> float:
     n = x.size
     return (np.sum(x*y) - n*x.mean()*y.mean()) / (np.sum(x*x) - n*x.mean()*x.mean())
 

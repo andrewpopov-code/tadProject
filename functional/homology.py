@@ -7,7 +7,7 @@ from utils.math import unique_points, inf_mask, extended_distance
 from utils.matching import matching_alg
 
 
-def diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool = False):
+def vr_diagrams(X: np.array, maxdim: int = 1, distances: bool = False, gens: bool = False):
     if not gens:
         return ripser_parallel(X, maxdim=maxdim, metric='precomputed' if distances else 'euclidean')['dgms']
     ret = ripser_parallel(X, maxdim=maxdim, metric='precomputed' if distances else 'euclidean', return_generators=True)
@@ -145,7 +145,7 @@ def frechet_variance(diag: list[np.ndarray], Y: np.ndarray = None, q: float = np
 def cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
     X = unique_points(X)
     Y = unique_points(Y)
-    return diagrams(np.vstack([X, Y]), maxdim=maxdim)
+    return vr_diagrams(np.vstack([X, Y]), maxdim=maxdim)
 
 
 def r_cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
@@ -160,7 +160,7 @@ def r_cross_barcode(X: np.array, Y: np.array, maxdim: int = 1):
         [inf_block, np.minimum(XX, YY), np.full((XX.shape[0], 1), np.inf)],
         [np.zeros((1, XX.shape[0])), np.full((1, XX.shape[0]), np.inf), 0]
     ])
-    return diagrams(M, maxdim=maxdim, distances=True)
+    return vr_diagrams(M, maxdim=maxdim, distances=True)
 
 
 def mtd(X: np.array, Y: np.array, maxdim: int = 1):

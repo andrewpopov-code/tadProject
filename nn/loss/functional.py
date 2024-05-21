@@ -21,9 +21,9 @@ def signature_loss(X: torch.Tensor, Z: torch.Tensor):  # FIXME
 
 
 def ph_dimension_loss(X: torch.Tensor):
-    n = torch.log(torch.arange(1, X.shape[1] + 1, X.shape[1] // 10))
+    n = torch.log(torch.arange(2, X.shape[1] + 1, X.shape[1] // 10))
     e = torch.zeros((X.shape[0], n.shape[0]))
-    for ni in range(1, X.shape[1] + 1, X.shape[1] // 10):
+    for ni in range(2, X.shape[1] + 1, X.shape[1] // 10):
         dgms_tensorXb, dgms_tensorXd = VietorisRips.apply(X[:, :ni])[:2]
         dgms_tensorXb = torch.nan_to_num(dgms_tensorXb, 0, 0)
         dgms_tensorXd = torch.nan_to_num(dgms_tensorXd, 0, 0)

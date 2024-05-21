@@ -166,3 +166,4 @@ assets/
 *.ipynb
 *.png
 .DS_STORE
+*.pt
