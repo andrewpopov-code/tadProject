@@ -167,3 +167,5 @@ assets/
 *.png
 .DS_STORE
 *.pt
+*.npy
+test.py

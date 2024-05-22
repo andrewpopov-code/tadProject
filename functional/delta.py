@@ -59,6 +59,14 @@ def exponential_map(x: np.ndarray, c: float, v: np.ndarray) -> np.ndarray:
     )
 
 
+def exponential_map_torch(x: torch.Tensor, c: float, v: torch.Tensor) -> torch.Tensor:
+    return mobius_addition_torch(
+        x.unsqueeze(-2),
+        torch.tanh(torch.sqrt(c) * conformal_torch(x, c).unsqueeze(-1) * torch.norm(v, dim=-1) / 2).unsqueeze(-1) * v / torch.sqrt(c) / torch.norm(v, dim=-1).unsqueeze(-1),
+        c
+    )
+
+
 def logarithmic_map(x: np.ndarray, c: float, y: np.ndarray) -> np.ndarray:
     ma = mobius_addition(-x, y, c)
     norm = np.linalg.norm(ma)
@@ -71,10 +79,11 @@ def hyp_ave(X: np.ndarray, c: float) -> np.ndarray:
 
 
 def mobius_addition_torch(x: torch.Tensor, y: torch.Tensor, c: [torch.Tensor, float]) -> torch.Tensor:
-    num = (1 + 2 * c * torch.sum(x * y, dim=-1) + c * torch.sum(y * y, dim=-1)) * x + (1 - c * torch.sum(x * x, dim=-1)) * y
-    den = 1 + 2 * c * torch.sum(x * y, dim=-1) + c * c * torch.sum(y * y, dim=-1) * torch.sum(x * x, dim=-1)
+    x = x.unsqueeze(-2)
+    num = (1 + 2 * c * torch.sum(x * y, dim=-1, keepdim=True) + c * x * torch.sum(y * y, dim=-1, keepdim=True)) + (1 - c * torch.sum(x * x, dim=-1, keepdim=True)) * y
+    den = 1 + 2 * c * torch.sum(x * y, dim=-1) + c * c * torch.sum(x * x, dim=-1) * torch.sum(y * y, dim=-1)
 
-    return num / den
+    return num / den.unsqueeze(-1)
 
 
 def conformal(x: np.ndarray, c: float) -> [float, np.ndarray]:

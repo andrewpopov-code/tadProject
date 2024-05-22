@@ -9,7 +9,7 @@ import math
 from .base import IntrinsicBase
 from .module import IntrinsicModule
 from utils.math import image_to_cloud, compute_unique_distances
-from functional.delta import delta_hyperbolicity_torch, delta_hyperbolicity, mobius_addition_torch, conformal_torch
+from functional.delta import delta_hyperbolicity, mobius_addition_torch, conformal_torch, exponential_map_torch
 
 
 class DeltaHyperbolicity(IntrinsicModule):
@@ -50,8 +50,8 @@ class Linear(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         mx = self.linear(x)
         return torch.tanh(
-            mx.norm() / x.norm() * torch.atanh(torch.sqrt(self._c * x.norm()))
-        ) * normalize(mx) / torch.sqrt(self._c)
+            (mx.norm(dim=-1) / x.norm(dim=-1) * torch.atanh(torch.sqrt(self._c * x.norm(dim=-1))))
+        ).unsqueeze(-1) * normalize(mx) / torch.sqrt(self._c)
 
 
 class Concat(nn.Module):
@@ -70,7 +70,7 @@ class HypSoftmax(nn.Module):
         super().__init__()
         self.P = nn.Parameter(torch.empty((out_features, in_features)), requires_grad=True)
         self.A = nn.Parameter(torch.empty((out_features, in_features)), requires_grad=True)
-        self.softmax = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=-2)
         self._c = nn.Parameter(torch.tensor(c), requires_grad=False)
 
         self.reset_parameters()
@@ -83,8 +83,18 @@ class HypSoftmax(nn.Module):
         init.kaiming_uniform_(self.A, a=math.sqrt(5))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        num = 2 * self._c * torch.sum(mobius_addition_torch(-self.P, x, self._c) * self.A, dim=-1)
-        den = (1 - self._c * torch.square(mobius_addition_torch(-self.P, x, self._c)).sum(dim=-1)) * torch.sum(self.A * self.A, dim=-1)
+        num = 2 * self._c * torch.sum(mobius_addition_torch(-self.P, x, self._c) * self.A.unsqueeze(-2), dim=-1)  # classes x batch
+        den = (1 - self._c * torch.square(mobius_addition_torch(-self.P, x, self._c)).sum(dim=-1)) * torch.sum(self.A * self.A, dim=-1, keepdim=True)
         return self.softmax(
-            conformal_torch(self.P, self._c) * torch.norm(self.A, dim=-1) / torch.sqrt(self._c) * torch.asinh(num / den)
+            (conformal_torch(self.P, self._c) / torch.norm(self.A, dim=-1) / torch.sqrt(self._c)).unsqueeze(-1) * torch.asinh(num / den)
         )
+
+
+class ToPoincare(nn.Module):
+    def __init__(self, c: float, d: int):
+        super().__init__()
+        self._c = c
+        self.x = nn.Parameter(torch.randn(d), requires_grad=True)
+
+    def forward(self, v: torch.Tensor):
+        return exponential_map_torch(self.x, self._c, v)
