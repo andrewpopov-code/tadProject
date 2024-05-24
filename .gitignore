@@ -163,6 +163,7 @@ data/
 runs/
 distance/
 assets/
+attention/
 *.ipynb
 *.png
 .DS_STORE

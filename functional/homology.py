@@ -127,7 +127,7 @@ def frechet_mean(diag: list[np.ndarray], q: float = np.inf) -> np.ndarray:
             t = np.zeros_like(mat)
             for j in range(len(mat)):
                 t[mat[j]] = j
-            y[i] = np.vstack([d, diagYp])[t[:k]].reshape(-1, 1, 2)  # mapping for Y (non-diagonal)
+            y[i] = np.vstack([d, diagYp])[t[:k]].reshape(-1, 1, 2)  # mapping for Y (off-diagonal)
         y = np.hstack(y).mean(axis=-2)
         if y == Y:
             stop = True

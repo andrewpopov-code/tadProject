@@ -1,5 +1,4 @@
 import numpy as np
-from utils.matching import matching_alg
 
 
 def entropy(prob: np.ndarray, logarithm):
@@ -30,7 +29,7 @@ def dmi(prob: np.ndarray, classes: np.ndarray, n: int):
 
 
 def multinomial_geodesic(P: np.ndarray, Q: np.ndarray) -> float:
-    return 2 * np.arccos(np.sqrt(P * Q).sum())
+    return 2 * np.arccos(max(min(np.sqrt(P * Q).sum(), 1), -1))
 
 
 def hellinger(P: np.ndarray, Q: np.ndarray) -> float:
@@ -42,9 +41,7 @@ def total_distance(P: np.ndarray, Q: np.ndarray) -> float:
 
 
 def wasserstein_distance(P: np.ndarray, Q: np.ndarray, q: float) -> float:
-    dist = np.power(np.abs(P.reshape(-1, 1) - Q), q)
-    mat = matching_alg(dist)
-    return np.power(dist[mat, :].sum(), 1 / q)
+    return np.power(np.power(np.abs(np.cumsum(P).reshape(-1, 1) - np.cumsum(Q)), q).sum(), 1 / q)
 
 
 def bhatta_distance(P: np.ndarray, Q: np.ndarray) -> float:
