@@ -9,7 +9,7 @@ def pq_loss(dgms_tensorXb: torch.Tensor, dgms_tensorXd: torch.Tensor, left: floa
     return torch.sum(left * right)
 
 
-def signature_loss(X: torch.Tensor, Z: torch.Tensor):  # FIXME
+def signature_loss(X: torch.Tensor, Z: torch.Tensor):
     _, gens_tensorXd = VietorisRips.apply(X)[2:]
     _, gens_tensorZd = VietorisRips.apply(Z)[2:]
     distXX = torch.norm(batch_select(X, gens_tensorXd[:, :, :, 1]) - batch_select(X, gens_tensorXd[:, :, :, 0]))
