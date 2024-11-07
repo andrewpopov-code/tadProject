@@ -1,6 +1,10 @@
 import torch
 from .vr import VietorisRips
-from src.intrinsic.utils.math import batch_select, neighbors, set_ops
+from src.intrinsic.utils.math import batch_select, neighbors, set_ops, top_k_dist_torch
+from src.intrinsic.nn.loss.information import Entropy, MutualEntropy
+
+
+rme, rmce = Entropy.apply, MutualEntropy.apply
 
 
 def pq_loss(dgms_tensorXb: torch.Tensor, dgms_tensorXd: torch.Tensor, left: float, right: float):
@@ -58,3 +62,19 @@ def intersection_loss(X: torch.Tensor, Z: torch.Tensor, k: int):
     dZ, iZ = neighbors(Z, k)
 
     return 1 - torch.sum(set_ops(iX, iZ)[1] / k) / X.shape[1]
+
+
+def mutual_information(X: torch.Tensor, Y: torch.Tensor, sx: float, sy: float, alpha: float):
+    return rme(X, sx, alpha) + rme(Y, sy, alpha) - rmce(X, Y, sx, sy, alpha)
+
+
+def ib_loss(X: torch.Tensor, Y: torch.Tensor, T: torch.Tensor, alpha: float, beta: float, k: int = 10):
+    b = X.shape[0]
+    sx, sy, st = torch.zeros(b), torch.zeros(b), torch.zeros(b)
+    for i in range(b):
+        sx[i] = torch.mean(top_k_dist_torch(X[i], k))
+        sy[i] = torch.mean(top_k_dist_torch(Y[i], k))
+        st[i] = torch.mean(top_k_dist_torch(T[i], k))
+    sx, sy, st = sx.mean().item(), sy.mean().item(), st.mean().item()
+
+    return mutual_information(Y, T, sy, st, alpha) - beta * mutual_information(X, T, sx, st, alpha)

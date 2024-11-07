@@ -1,4 +1,6 @@
 import numpy as np
+from src.intrinsic.functional.kernel import rbf_kernel
+from src.intrinsic.utils.math import top_k_dist
 
 
 def entropy(prob: np.ndarray, logarithm):
@@ -46,3 +48,27 @@ def wasserstein_distance(P: np.ndarray, Q: np.ndarray, q: float) -> float:
 
 def bhatta_distance(P: np.ndarray, Q: np.ndarray) -> float:
     return -np.log(np.sqrt(P * Q).sum())
+
+
+def sigma_dist(x: np.ndarray, k: int = 10):
+    return np.mean(top_k_dist(x, k))
+
+
+def matrix_entropy(A: np.ndarray, alpha: float):
+    return 1 / (1 - alpha) * np.log2(np.power(np.linalg.eigvals(A), alpha).sum(axis=-1))
+
+
+def renyi_matrix_entropy(x: np.ndarray, sigma: float, alpha: float):
+    K = rbf_kernel(x, sigma)
+    A = K / K.trace(axis1=-2, axis2=-1)
+    return matrix_entropy(A, alpha)
+
+
+def renyi_matrix_cross_entropy(x: np.ndarray, y: np.ndarray, sigma1: float, sigma2: float, alpha: float):
+    K1, K2 = rbf_kernel(x, sigma1), rbf_kernel(y, sigma2)
+    T = K1 * K2
+    return matrix_entropy(T / T.trace(axis1=-2, axis2=-1), alpha)
+
+
+def mutual_information(x: np.ndarray, y: np.ndarray, sigma1: float, sigma2: float, alpha: float):
+    return renyi_matrix_entropy(x, sigma1, alpha) + renyi_matrix_entropy(y, sigma2, alpha) - renyi_matrix_cross_entropy(x, y, sigma1, sigma2, alpha)

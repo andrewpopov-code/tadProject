@@ -3,7 +3,6 @@ import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.spatial import distance_matrix
 
-from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -66,20 +65,15 @@ def mm(X: np.ndarray, k: int = 5, distances: bool = False):
     return T / (Tk - T)
 
 
-def ols(X: np.ndarray, k: int = 5, slope_estimator=LinearRegression, distances: bool = False):
+def ols(X: np.ndarray, k: int = 5, distances: bool = False):
+    # Levina (in section 2)
     nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
     dist, _ = nn.kneighbors()
 
-    y = np.zeros_like(dist)
-    for i in range(k):
-        y[:, i] = dist[:, i] * (dist == dist[:, i].reshape(-1, 1)).sum(axis=-1) / (i + 1)
+    x = np.log(np.arange(1, k + 1))
+    y = np.log(dist.mean(axis=0))
 
-    d = np.zeros(X.shape[0])
-    for i in range(X.shape[0]):
-        lr = slope_estimator(fit_intercept=False).fit(dist[i].reshape(-1, 1), y[i].reshape(-1, 1))
-        d[i] = lr.coef_[0, 0]
-
-    return d
+    return beta1_intercept(x, y)
 
 
 def pca_sklearn(X: np.ndarray, explained_variance: float = 0.95):

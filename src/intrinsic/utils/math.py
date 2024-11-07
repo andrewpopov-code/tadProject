@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from scipy.spatial import distance_matrix
 from scipy.special import gamma
+from sklearn.neighbors import NearestNeighbors
 
 
 def image_to_cloud(X: np.ndarray, channel_first: bool = False):
@@ -112,3 +113,26 @@ def extended_distance(diagX: np.ndarray, diagY: np.ndarray, q: float) -> np.ndar
 
 def unit_ball_volume(n: float) -> float:
     return np.sqrt(np.power(np.pi, n)) / gamma(n / 2 + 1)
+
+
+def matrix_power(X: np.ndarray, r: float):
+    # X is semi-definite
+    D, V = np.linalg.eig(X)
+    return V @ np.diag(np.power(D, r)) @ V.T
+
+
+def matrix_power_torch(X: torch.Tensor, r: float):
+    # X is semi-definite
+    D, V = torch.linalg.eig(X)
+    return V @ torch.diag(torch.pow(D, r)) @ V.transpose(-1, -2)
+
+
+def top_k_dist(X: np.ndarray, k: int = 10):
+    nn = NearestNeighbors(n_neighbors=k).fit(X)
+    _, dist = nn.kneighbors()
+    return np.unique(dist.flatten())[:k]
+
+
+def top_k_dist_torch(X: torch.Tensor, k: int = 10):
+    dist, _ = neighbors(X, k)
+    return torch.unique(torch.flatten(dist))[:k]

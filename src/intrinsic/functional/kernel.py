@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from scipy.special import gamma, jv
 from scipy.spatial import distance_matrix
 from .homology import landscapes, drop_inf
@@ -56,6 +57,18 @@ def sigmoid_kernel(x: np.ndarray, y: np.ndarray, eta: float, theta: float) -> fl
 
 def gaussian_kernel(x: np.ndarray, y: np.ndarray, sigma: float) -> float:
     return 1 / np.power(np.sqrt(2 * np.pi) * sigma, x.size) * np.exp(-np.linalg.norm(x - y) / 2 / sigma / sigma)
+
+
+def rbf_kernel(x: np.ndarray, sigma: float) -> np.ndarray:
+    if x.ndim > 2:
+        D = np.vstack([distance_matrix(x[i], x[i]) for i in range(x.shape[0])])
+    else:
+        D = distance_matrix(x, x)
+    return np.exp(-D ** 2 / (2 * sigma ** 2))
+
+def rbf_kernel_torch(X: torch.Tensor, sigma: float) -> torch.Tensor:
+    D = torch.cdist(X, X)
+    return torch.exp(-D**2 / (2 * sigma ** 2))
 
 
 def gaussian_kernel_one(x: float, n: float, sigma: float) -> float:
