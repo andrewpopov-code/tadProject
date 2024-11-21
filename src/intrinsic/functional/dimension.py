@@ -125,3 +125,17 @@ def magnitude_reg(X: np.ndarray, t: np.ndarray, i: int = None, j: int = None, di
         m[i] = magnitude(t[i] * X)
     i, j = i or 0, j or t.shape[0]
     return beta1_intercept(np.log(m[i:j]), np.log(t[i:j]))
+
+
+def id_corr(D1: np.ndarray, D2: np.ndarray, dim_est, S: int):
+    d1, d2, dc = dim_est(D1), dim_est(D2), dim_est(np.hstack([D1, D2]))
+    rho = (d1 + d2 - dc) / max(d1, d2)
+    cnt = 0
+    D2 = D2.T
+    ds = np.zeros(S)
+    for i in range(S):
+        np.random.shuffle(D2)
+        ds[i] = dim_est(np.hstack([D1, D2.T]))
+        cnt += ds[i] <= dc
+
+    return rho, (cnt + 1) / (S + 1)

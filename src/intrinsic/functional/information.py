@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.spatial import distance_matrix
+from sklearn.model_selection import StratifiedShuffleSplit
 from src.intrinsic.functional.kernel import rbf_kernel
 from src.intrinsic.utils.math import top_k_dist
 
@@ -72,3 +74,10 @@ def renyi_matrix_cross_entropy(x: np.ndarray, y: np.ndarray, sigma1: float, sigm
 
 def mutual_information(x: np.ndarray, y: np.ndarray, sigma1: float, sigma2: float, alpha: float):
     return renyi_matrix_entropy(x, sigma1, alpha) + renyi_matrix_entropy(y, sigma2, alpha) - renyi_matrix_cross_entropy(x, y, sigma1, sigma2, alpha)
+
+
+def label_sharpness(x: np.ndarray, y: np.ndarray, M: int = 1000):
+    # binary classification
+    ind, _ = StratifiedShuffleSplit(1, train_size=M).split(x, y)
+    A, B = x[ind][y[ind] == 0], x[ind][y[ind] == 1]
+    return np.max(1 / distance_matrix(A, B))
