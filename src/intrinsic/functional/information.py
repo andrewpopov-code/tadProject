@@ -1,8 +1,12 @@
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from scipy.spatial import distance_matrix
+from scipy.special import gammaln
 from sklearn.model_selection import StratifiedShuffleSplit
+from itertools import permutations
 from src.intrinsic.functional.kernel import rbf_kernel
 from src.intrinsic.utils.math import top_k_dist
+from math import factorial
 
 
 def entropy(prob: np.ndarray, logarithm):
@@ -81,3 +85,29 @@ def label_sharpness(x: np.ndarray, y: np.ndarray, M: int = 1000):
     ind, _ = StratifiedShuffleSplit(1, train_size=M).split(x, y)
     A, B = x[ind][y[ind] == 0], x[ind][y[ind] == 1]
     return np.max(1 / distance_matrix(A, B))
+
+
+def permutation_entropy(density: np.ndarray, d: int):
+    return entropy(density, np.log2) / gammaln(d)
+
+
+def permutation_density(x: np.ndarray, d: int = 5):
+    S = sliding_window_view(x, d)
+    sh = []
+    for p in permutations(range(d)):
+        valid = np.logical_and.reduce(S[:, p][:, 1:] <= S[:, p][:, :-1], axis=1) / (x.size - d + 1)
+        if valid > 0:
+            sh.append(valid)
+    return np.array(sh)
+
+
+def disequilibrium(p: np.ndarray, q: np.ndarray, d: int):
+    ...
+
+
+def complexity(x: np.ndarray, d: int = 5):
+    p = permutation_density(x, d)
+    pe = np.ones_like(p) / factorial(d)
+    q_max = -((factorial(d) + 1) / factorial(d) * np.log(factorial(d) + 1) - 2 * gammaln(2 * d) + gammaln(d)) / 2
+    q = entropy((p + pe) / 2, np.log2) + (factorial(d) - p.size) * (pe[0] / 2) * np.log2(pe[0] / 2) - entropy(p, np.log2) / 2 - np.log2(pe[0]) / 2
+    return (q  / q_max) * permutation_entropy(p, d)
