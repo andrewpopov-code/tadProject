@@ -106,6 +106,7 @@ def disequilibrium(p: np.ndarray, q: np.ndarray, d: int):
 
 
 def complexity(x: np.ndarray, d: int = 5):
+    "https://www.sciencedirect.com/science/article/pii/S037843711100906X"
     p = permutation_density(x, d)
     pe = np.ones_like(p) / factorial(d)
     q_max = -((factorial(d) + 1) / factorial(d) * np.log(factorial(d) + 1) - 2 * gammaln(2 * d) + gammaln(d)) / 2

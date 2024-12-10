@@ -127,6 +127,29 @@ def magnitude_reg(X: np.ndarray, t: np.ndarray, i: int = None, j: int = None, di
     return beta1_intercept(np.log(m[i:j]), np.log(t[i:j]))
 
 
+def made(X: np.ndarray, k: int = 5, distances: bool = False, dim: int = None):
+    "A. Farahmand, C. Szepesvári, J.-Y. Audibert: Manifold-adaptive dimension estimation"
+    assert dim is not None or not distances
+    dim = dim or X.shape[1]
+    nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, _ = nn.kneighbors()
+    ptw = np.log(2) / np.log(dist[:, -1] / dist[:, (k + 1) // 2])
+    return np.ceil(np.min(ptw, dim).mean())
+
+
+def landmarks(Y: np.ndarray, Z: np.ndarray = None, distances: bool = False, k1: int = 1, k2: int = 5):
+    """
+    K. Sricharan, R. Raich, A.O. Hero: Optimized intrinsic dimension estimation using nearest neighbor graphs
+    :param Y: may be a matrix of distances between points in Y and Z
+    """
+    assert Z is not None or distances
+    if not distances: Y = distance_matrix(Y, Z)
+    nn = NearestNeighbors(n_neighbors=k2, metric='precomputed').fit(np.eye(Y.shape[1]))
+    dist, _ = nn.kneighbors(Y)
+    Tk1, Tk2 = np.mean(np.log(dist[:, k1])), np.mean(np.log(dist[:, k2]))
+    return (np.log(k2 - 1) - np.log(k1 - 1)) / (Tk2 - Tk1)
+
+
 def id_corr(D1: np.ndarray, D2: np.ndarray, dim_est, S: int):
     d1, d2, dc = dim_est(D1), dim_est(D2), dim_est(np.hstack([D1, D2]))
     rho = (d1 + d2 - dc) / max(d1, d2)
