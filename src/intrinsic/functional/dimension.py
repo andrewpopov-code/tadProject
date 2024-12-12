@@ -2,6 +2,7 @@ import numpy as np
 
 from scipy.spatial.distance import pdist
 from scipy.spatial import distance_matrix
+from scipy.sparse.csgraph import minimum_spanning_tree
 
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
@@ -161,3 +162,34 @@ def id_corr(D1: np.ndarray, D2: np.ndarray, dim_est, S: int):
         cnt += ds[i] <= dc
 
     return rho, (cnt + 1) / (S + 1)
+
+
+def reach(X: np.ndarray, k: int, j: int, distances: bool = False):
+    nn = NearestNeighbors(n_neighbors=k, metric='precomputed' if distances else 'minkowski').fit(X)
+    dist, adj = nn.kneighbors()
+    n = X.shape[0]
+
+    for _ in range(j):
+        adj = adj[adj].reshape(n, -1)
+    np.sort(adj, -1)
+    return np.mean(np.sum(adj[:, 1:] > adj[:, :-1], axis=-1) + 1)
+
+
+def brito(X: np.ndarray, k: int, j: int, dim: int = None, distances: bool = False):
+    assert dim is not None or not distances
+    dim = dim or X.shape[1]
+    r = reach(X, j, k, distances)
+    ans, ans_d = np.inf, -1
+
+    for d in range(dim):
+        f = np.random.uniform(size=(X.shape[0], d))
+        rf = reach(f, k, j)
+        if np.abs(r - rf) < ans:
+            ans, ans_d = np.abs(r - rf), d
+    return ans_d
+
+
+def steele(X: np.ndarray, distances: bool = False):
+    Tcsr = minimum_spanning_tree(X if distances else distance_matrix(X, X)).toarray()
+    deg = np.sum(Tcsr != 0, axis=-1)
+    return np.square(deg).mean()
