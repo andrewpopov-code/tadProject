@@ -1,34 +1,34 @@
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy.spatial import distance_matrix
-from scipy.special import gammaln
+from scipy.special import gammaln, xlogy
 from sklearn.model_selection import StratifiedShuffleSplit
 from itertools import permutations
 from src.intrinsic.functional.kernel import rbf_kernel
 from src.intrinsic.utils.math import top_k_dist
-from src.intrinsic.utils.compression import lzw, lzw_conditional, rle
+from src.intrinsic.utils.compression import lzw, lzw_conditional  # , rle
 from math import factorial
 
 
-def entropy(prob: np.ndarray, logarithm):
-    return (-prob * logarithm(prob)).sum(axis=-1)
+def entropy(prob: np.ndarray, base: float = np.e):
+    return xlogy(-prob, prob).sum(axis=-1) / np.log(base)
 
 
-def cross_entropy(P: np.ndarray, Q: np.ndarray, logarithm):
-    return (-P * logarithm(Q)).sum(axis=-1)
+def cross_entropy(P: np.ndarray, Q: np.ndarray, base: float = np.e):
+    return xlogy(-P, Q).sum(axis=-1) / np.log(base)
 
 
-def kld(P: np.ndarray, Q: np.ndarray, logarithm=np.log):
-    return cross_entropy(P, Q, logarithm) - entropy(P, logarithm)
+def kld(P: np.ndarray, Q: np.ndarray, base: float = np.e):
+    return cross_entropy(P, Q, base) - entropy(P, base)
 
 
 def renyi_d(P: np.ndarray, Q: np.ndarray, alpha: float):
     return 1 / np.log(np.sum(np.power(P, alpha) / np.power(Q, alpha - 1)))
 
 
-def jensen_d(P: np.ndarray, Q: np.ndarray, logarithm=np.log):
+def jensen_d(P: np.ndarray, Q: np.ndarray, base=np.e):
     M = (P + Q) / 2
-    return (kld(P, M, logarithm) + kld(Q, M, logarithm)) / 2
+    return (kld(P, M, base) + kld(Q, M, base)) / 2
 
 
 def dmi(prob: np.ndarray, classes: np.ndarray, n: int):
@@ -111,19 +111,19 @@ def complexity(x: np.ndarray, d: int = 5):
     p = permutation_density(x, d)
     pe = np.ones_like(p) / factorial(d)
     q_max = -((factorial(d) + 1) / factorial(d) * np.log(factorial(d) + 1) - 2 * gammaln(2 * d) + gammaln(d)) / 2
-    q = entropy((p + pe) / 2, np.log2) + (factorial(d) - p.size) * (pe[0] / 2) * np.log2(pe[0] / 2) - entropy(p, np.log2) / 2 - np.log2(pe[0]) / 2
+    q = entropy((p + pe) / 2, 2) + (factorial(d) - p.size) * (pe[0] / 2) * np.log2(pe[0] / 2) - entropy(p, 2) / 2 - np.log2(pe[0]) / 2
     return (q  / q_max) * permutation_entropy(p, d)
 
 
 def compression_complexity(s: str, abc: list):
     abc = abc + list('0123456789')
-    return len(lzw(rle(s), abc))
+    return len(lzw(s, abc))
 
 
 def conditional_compression_complexity(s: str, t: str, abc: list):
     """C(s | t)"""
     abc = abc + list('0123456789')
-    return len(lzw_conditional(rle(s), rle(t), abc))
+    return len(lzw_conditional(s, t, abc))
 
 
 def complexity_distance(s: str, t: str, abc: list):
@@ -140,4 +140,4 @@ def diameter(l: list[str], abc: list):
 
 def complexity_bound(s: list[int], l: int):
     prob = np.eye(l)[s].sum(axis=0) / len(s)
-    return 2 * (l + 1) * np.log(len(s)) / np.log(l) + len(s) * entropy(prob, logarithm=lambda x: np.log(x) / np.log(l))
+    return 2 * (l + 1) * np.log(len(s)) / np.log(l) + len(s) * entropy(prob, l)

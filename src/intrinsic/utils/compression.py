@@ -9,7 +9,7 @@ def lzw(s: str, abc: list, d: dict = None, ret_dict: bool = False):
             x = x + y
             continue
         ret += str(d[x])
-        d[x + y] = k + 1
+        d[x + y] = k
         k += 1
         x = y
     ret += str(d[x])
