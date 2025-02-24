@@ -1,4 +1,6 @@
 from .base import BaseEstimator
+import numpy as np
+from src.intrinsic.functional.dimension import mm, mle, ols, two_nn, pca, local_pca
 
 
 class DimensionEstimator(BaseEstimator):
@@ -13,7 +15,7 @@ class DimensionEstimator(BaseEstimator):
         elif self.est == 'mle':
             est = mle(X, **self.kwargs)
         elif self.est == 'ols':
-            est = ols(X, slope_estimator=self.slope_estimator, **self.kwargs)
+            est = ols(X, **self.kwargs)
         elif self.est == 'two_nn':
             est = two_nn(X)
         elif self.est == 'pca':

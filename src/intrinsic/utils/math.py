@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from scipy.spatial import distance_matrix
-from scipy.special import gamma
+from scipy.special import gamma, xlogy
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -136,3 +136,7 @@ def top_k_dist(X: np.ndarray, k: int = 10):
 def top_k_dist_torch(X: torch.Tensor, k: int = 10):
     dist, _ = neighbors(X, k)
     return torch.unique(torch.flatten(dist))[:k]
+
+
+def entropy(prob: np.ndarray, base: float = np.e):
+    return xlogy(-prob, prob).sum(axis=-1) / np.log(base)

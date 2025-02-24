@@ -5,13 +5,8 @@ from scipy.special import gammaln, xlogy
 from sklearn.model_selection import StratifiedShuffleSplit
 from itertools import permutations
 from src.intrinsic.functional.kernel import rbf_kernel
-from src.intrinsic.utils.math import top_k_dist
-from src.intrinsic.utils.compression import lzw, lzw_conditional  # , rle
+from src.intrinsic.utils.math import top_k_dist, entropy
 from math import factorial
-
-
-def entropy(prob: np.ndarray, base: float = np.e):
-    return xlogy(-prob, prob).sum(axis=-1) / np.log(base)
 
 
 def cross_entropy(P: np.ndarray, Q: np.ndarray, base: float = np.e):
@@ -113,31 +108,3 @@ def complexity(x: np.ndarray, d: int = 5):
     q_max = -((factorial(d) + 1) / factorial(d) * np.log(factorial(d) + 1) - 2 * gammaln(2 * d) + gammaln(d)) / 2
     q = entropy((p + pe) / 2, 2) + (factorial(d) - p.size) * (pe[0] / 2) * np.log2(pe[0] / 2) - entropy(p, 2) / 2 - np.log2(pe[0]) / 2
     return (q  / q_max) * permutation_entropy(p, d)
-
-
-def compression_complexity(s: str, abc: list):
-    abc = abc + list('0123456789')
-    return len(lzw(s, abc))
-
-
-def conditional_compression_complexity(s: str, t: str, abc: list):
-    """C(s | t)"""
-    abc = abc + list('0123456789')
-    return len(lzw_conditional(s, t, abc))
-
-
-def complexity_distance(s: str, t: str, abc: list):
-    return min(conditional_compression_complexity(s, t, abc), conditional_compression_complexity(t, s, abc))
-
-
-def diameter(l: list[str], abc: list):
-    # TODO: which logarithm?
-    ret = 0
-    for i in range(len(l)):
-        ret = max(ret, conditional_compression_complexity(l[i], ''.join(l[:i] + l[i + 1:]), abc))
-    return ret + np.log(len(l)) / np.log(len(abc) + 10)
-
-
-def complexity_bound(s: list[int], l: int):
-    prob = np.eye(l)[s].sum(axis=0) / len(s)
-    return 2 * (l + 1) * np.log(len(s)) / np.log(l) + len(s) * entropy(prob, l)

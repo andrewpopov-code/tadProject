@@ -2,8 +2,7 @@ import numpy as np
 from gph import ripser_parallel
 from gudhi.wasserstein.barycenter import lagrangian_barycenter
 from scipy.spatial import distance_matrix
-from .information import entropy
-from src.intrinsic.utils.math import unique_points, inf_mask, extended_distance
+from src.intrinsic.utils.math import unique_points, inf_mask, extended_distance, entropy
 from src.intrinsic.utils.matching import matching_alg
 
 
