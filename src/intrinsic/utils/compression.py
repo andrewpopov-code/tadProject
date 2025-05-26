@@ -1,18 +1,23 @@
+import numpy as np
+
+
 def lzw(s: str, abc: list, d: dict = None, ret_dict: bool = False):
     d = d or {x: i for i, x in enumerate(abc)}
     k = len(d)
     x = s[0]
     ret = ""
+    code_len = int(np.ceil(np.log2(k)))
     for i in range(1, len(s)):
         y = s[i]
         if x + y in d:
             x = x + y
             continue
-        ret += str(d[x])
+        ret += bin(d[x])[2:].rjust(code_len, '0')
         d[x + y] = k
         k += 1
+        code_len = int(np.ceil(np.log2(k)))
         x = y
-    ret += str(d[x])
+    ret += bin(d[x])[2:].rjust(code_len, '0')
 
     if ret_dict:
         return ret, d

@@ -21,7 +21,7 @@ def information(X: np.ndarray):
     s = np.zeros_like(d)
     for i in range(d.shape[0]):
         flat = np.histogramdd(X, bins=int(np.ceil(d[-1] / d[i])))[0].reshape(-1)
-        s[i] = -entropy(flat[flat > 0] / flat.sum(), np.log2)
+        s[i] = -entropy(flat[flat > 0] / flat.sum(), 2)
     return np.abs(beta1_intercept(np.log2(d), s))
 
 

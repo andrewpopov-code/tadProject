@@ -5,14 +5,12 @@ from src.intrinsic.functional.curvature import curvature
 
 
 def compression_complexity(s: str, abc: list):
-    abc = abc + list('0123456789')
-    return len(lzw(s, abc))
+    return len(lzw(s, abc)) / np.ceil(np.log2(len(abc)))
 
 
 def conditional_compression_complexity(s: str, t: str, abc: list):
     """C(s | t)"""
-    abc = abc + list('0123456789')
-    return len(lzw_conditional(s, t, abc))
+    return len(lzw_conditional(s, t, abc)) / np.ceil(np.log2(len(abc)))
 
 
 def complexity_distance(s: str, t: str, abc: list):
@@ -54,11 +52,6 @@ def batch_complexity(X: list[str], abc: list):
     return np.array([
         compression_complexity(s, abc) for s in X
     ])
-
-
-def string_kernel(s: str, t: str, lam: float = 0.5):
-    """https://www.jmlr.org/papers/volume2/lodhi02a/lodhi02a.pdf"""
-    ...
 
 
 def plain_information(s: str, t: str, abc: list):
