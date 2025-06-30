@@ -84,7 +84,7 @@ def label_sharpness(x: np.ndarray, y: np.ndarray, M: int = 1000):
 
 
 def permutation_entropy(density: np.ndarray, d: int):
-    return entropy(density, np.log2) / gammaln(d)
+    return entropy(density, 2) / gammaln(d)
 
 
 def permutation_density(x: np.ndarray, d: int = 5):
@@ -97,10 +97,6 @@ def permutation_density(x: np.ndarray, d: int = 5):
     return np.array(sh)
 
 
-def disequilibrium(p: np.ndarray, q: np.ndarray, d: int):
-    ...
-
-
 def complexity(x: np.ndarray, d: int = 5):
     "https://www.sciencedirect.com/science/article/pii/S037843711100906X"
     p = permutation_density(x, d)
@@ -108,3 +104,15 @@ def complexity(x: np.ndarray, d: int = 5):
     q_max = -((factorial(d) + 1) / factorial(d) * np.log(factorial(d) + 1) - 2 * gammaln(2 * d) + gammaln(d)) / 2
     q = entropy((p + pe) / 2, 2) + (factorial(d) - p.size) * (pe[0] / 2) * np.log2(pe[0] / 2) - entropy(p, 2) / 2 - np.log2(pe[0]) / 2
     return (q  / q_max) * permutation_entropy(p, d)
+
+
+def disequilibrium(p: np.ndarray):
+    """Compute disequilibrium as Euclidean distance to uniform distribution."""
+    uniform = np.ones_like(p) / len(p)
+    return np.sum((p - uniform)**2)
+
+def complexity_lmc(p):
+    """Compute LMC statistical complexity: C = H * D"""
+    H = entropy(p, 2)
+    D = disequilibrium(p)
+    return H * D
